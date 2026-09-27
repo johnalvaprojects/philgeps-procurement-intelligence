@@ -1,90 +1,106 @@
-# PhilGEPS software opportunity downloader
+# PhilGEPS Procurement Intelligence
 
-This tool finds public PhilGEPS Small Value Procurement notices, keeps the ones related to software, and downloads their public documents. Each notice has its own folder named with the PhilGEPS notice ID. The files inside keep their original PhilGEPS filenames.
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-000000?style=flat&logo=express&logoColor=white)](https://expressjs.com/)
+[![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)](https://vite.dev/)
 
-A hardware title such as IT equipment is skipped and its files are not downloaded. If the title is unclear, the program reads the public document and keeps the file only when that document is a software purchase. An existing file is not overwritten.
+**PhilGEPS Procurement Intelligence** is a local tool for public [PhilGEPS](https://philgeps.gov.ph) Small Value Procurement notices. It keeps software-related opportunities, reads their public documents, and opens a review page for the rest. Built as a personal project — clone, run locally, and extend.
 
-The quotation stays in Trustera's existing process. This tool does not create a quotation, choose prices, submit a bid, or contact the agency.
+**Stack:** Node.js · Express · React · Vite · PDF, DOCX, and spreadsheet extraction · OCR for scanned pages
 
-## Run one notice
+**My role:** Notice scanning and classification, document extraction, the review API, and the React review interface (opportunity index, filters, search, and pagination).
+
+**Author:** [John Solomon M. Alvarez](https://github.com/johnalvaprojects)
+
+---
+
+## Quick start
+
+Requires **Node.js 22**.
+
+```bash
+npm install
+npm test
+npm run dev
+```
+
+In a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The API listens on `http://localhost:3000`. The review page is the Vite app, usually `http://localhost:5173`, and it proxies `/api` to that server.
+
+Copy `.env.example` to `.env` if that file is missing. `.env` is not committed. Downloaded documents, scan logs, and saved notice files stay in `data/` and are not committed either.
+
+---
+
+## Features
+
+- Scans public Small Value Procurement notices and separates software, review, and not-relevant titles
+- Reads PDF, DOCX, and spreadsheet attachments, and uses OCR when a PDF has no text layer
+- Review page with search, classification filters, and pagination
+- Manual mark for software, not relevant, or keep for review
+- Dark mode and a hold-to-scan control on the main page
+
+---
+
+## Project layout
+
+| Path | Role |
+|------|------|
+| `src/` | Scanner, classifier, document extraction, and Express API |
+| `frontend/` | React + Vite review interface |
+| `config/relevance.json` | Words used to judge software and hardware titles |
+| `tests/` | Node test runner checks |
+| `data/documents/` | Original downloaded files (local only) |
+| `data/output/` | Saved notice JSON and the review page (local only) |
+
+---
+
+## Commands
 
 ```bash
 npm install
 npm test
 node src/index.js 85876
-```
-
-A full notice URL also works:
-
-```bash
 node src/index.js https://philgeps.gov.ph/Indexes/viewLiveTenderDetails/85876
-```
-
-## Scan the last three days
-
-```bash
 node src/index.js --scan
-```
-
-This checks every Small Value Procurement notice whose PhilGEPS publish date is from three days ago through today. The date comes from the publish date on the public list, not from the notice number. A hardware title is skipped. A software title, or a vague title whose document is software, gets every public attachment in `data/documents/<notice id>/`.
-
-## Run a small test batch
-
-```bash
 node src/index.js --svp 5
-```
-
-This is the short test. It processes at most the number you pass, such as 10, 20, or 50. Every Small Value Procurement notice counts, including hardware, software, unclear, already saved, and errors. It does not scan the full three-day window. The script waits about one second between requests.
-
-## Reclassify saved notices
-
-```bash
 node src/index.js --reclassify
-```
-
-This reads the notice files already in `data/output` and applies the current classifier again. It does not start a new scan. A manual classification is left unchanged. Saved attachments are not deleted. A vague notice is checked from saved text when that text exists, and otherwise from one temporary attachment.
-
-## Open the review list
-
-```bash
 node src/index.js --list
-```
-
-That writes `data/output/review.html` from the notices already saved. Open that file in a browser. A batch run and a single-notice run refresh the same page. Each notice shows the PhilGEPS ID, title, publish date, status, attachment count, and whether a person has checked it.
-
-```bash
 node src/index.js --review
-```
-
-That serves the same page on this computer so Mark Software, Mark Not Relevant, and Keep for Review can save a manual decision. A manual decision is stored on the notice JSON and is separate from an automatic classification. Downloaded files are left in place. The same decision can be saved from the command line:
-
-```bash
 node src/index.js --decide 87086 software
-node src/index.js --decide 87086 not-relevant
-node src/index.js --decide 87086 review
-```
-
-## Mark a notice reviewed
-
-```bash
 node src/index.js --reviewed 85876
 ```
 
-This updates the saved notice and the review page. It does not download the notice again. `Checked` stays `pending` until that command is run. Running it again keeps the first reviewed time. A later run of the same notice keeps that reviewed mark.
+`--scan` checks Small Value Procurement notices whose PhilGEPS publish date is from three days ago through today. A hardware title is skipped. A software title, or an unclear title whose document is software, keeps its public attachments in `data/documents/<notice id>/`. An existing file is not overwritten.
 
-Under the row, the page shows the requirements saved from the document: product or service, line items, delivery, certifications, ABC, and any other requirement that was found. A section that was not in the document is left out. When no line items were read, the extracted text is still linked.
+`--svp 5` is the short test. It processes at most the number you pass. Every notice counts, including hardware, software, unclear, already saved, and errors. The script waits about one second between requests.
+
+`--reclassify` reads notices already in `data/output` and applies the current classifier again. It does not start a new scan. A manual classification is left unchanged.
+
+`--list` writes `data/output/review.html`. `--review` serves that page on this computer. `--decide` stores a manual decision on the notice JSON. `--reviewed` marks a notice checked and keeps the first reviewed time.
+
+This tool does not create a quotation, choose prices, submit a bid, or contact the agency.
 
 ## Output
 
-- `data/output/85876.json` — one notice, its documents, relevance, and requirements. `review.status` stays `pending` until a person marks it reviewed.
-- `data/output/85876.extracted.txt` — the text read from the PDF.
-- `data/documents/85876/` — the original downloaded file. A kept notice also has `metadata.json` in that folder.
-- `data/logs/` — one log file for each scan.
-- `data/output/svp-batch.json` — the short list from a batch run.
-- `data/output/review.html` — the same saved notices as a page a person can open.
+- `data/output/<id>.json` — one notice, its documents, relevance, and requirements
+- `data/output/<id>.extracted.txt` — text read from the PDF
+- `data/documents/<id>/` — the original downloaded file, plus `metadata.json` when the notice is kept
+- `data/logs/` — one log file for each scan
+- `data/output/svp-batch.json` — the short list from a batch run
+- `data/output/review.html` — the saved notices as a page
 
-A field that is not in the notice or the document is `null` or an empty list. Software and hardware words used for relevance live in `config/relevance.json`.
+A field that is not in the notice or the document is `null` or an empty list. When a PDF has no text layer, OCR runs and stops after 15 seconds by default (`OCR_TIMEOUT_MS`). The notice is then marked for review. OCR can miss or mix up words, so `usedOcr` is recorded and the original file should still be checked.
 
-Settings are in `.env`. Copy `.env.example` if that file is missing. `.env` is not committed.
+---
 
-The current PDF reader uses the text stored in the file. When that text is missing, the program reads the scanned pages with OCR and saves what it could recognize. OCR stops after 15 seconds by default (`OCR_TIMEOUT_MS`). The notice is then marked for review and the scan continues. A notice that already has a saved classification is not inspected again. OCR can miss or mix up words, so `usedOcr` is recorded on the document and a person should still check the original file. A request-for-quotation layout that does not match the current table pattern can leave the line items empty.
+## License
+
+Licensed under the [MIT License](LICENSE).
