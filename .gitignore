@@ -1,0 +1,8 @@
+node_modules/
+.env
+data/documents/**
+data/output/**
+data/logs/**
+!data/documents/.gitkeep
+!data/output/.gitkeep
+!data/logs/.gitkeep

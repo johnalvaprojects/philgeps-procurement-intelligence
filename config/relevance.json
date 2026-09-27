@@ -1,0 +1,40 @@
+{
+  "softwareTerms": [
+    "software",
+    "software license",
+    "subscription",
+    "web application",
+    "mobile application",
+    "information system",
+    "database system",
+    "system development",
+    "software customization",
+    "system customization",
+    "software maintenance",
+    "software support",
+    "software service",
+    "application development",
+    "digital platform",
+    "enterprise software"
+  ],
+  "hardwareTerms": [
+    "desktop computer",
+    "laptop",
+    "printer",
+    "server",
+    "router",
+    "network switch",
+    "network equipment",
+    "it equipment",
+    "monitor",
+    "cctv",
+    "office equipment",
+    "office supplies",
+    "furniture",
+    "construction material",
+    "electrical works",
+    "cleaning service",
+    "vehicle",
+    "network switches"
+  ]
+}
