@@ -10,6 +10,7 @@ import { get, requestDelayMs } from './philgeps/client.js';
 import { noticeUrl, parseNoticeHtml } from './philgeps/notices.js';
 import { confirmVagueNotice, downloadAllAttachments, loadDocumentLinks } from './process-notice.js';
 import { classificationFields } from './review/decision.js';
+import { attachWorkStatus } from './review/work-status.js';
 import { addReclassifyResult, emptyReclassifyCounts, formatReclassifySummary } from './review/summary.js';
 import { delay, log, writeLogBlock } from './log.js';
 
@@ -38,11 +39,11 @@ export function classifySavedDocument(text, rules, title) {
 }
 
 export function applyAutomaticClassification(packet, relevance) {
-  return {
+  return attachWorkStatus({
     ...packet,
     relevance,
     ...classificationFields(relevance, packet?.review),
-  };
+  }, packet);
 }
 
 export function packetHasLocalFiles(packet) {

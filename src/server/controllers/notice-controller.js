@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { projectRoot } from "../../project-root.js";
 import { decideSavedNotice } from "../../review/decision.js";
+import { publicWorkStatus, setSavedWorkStatus } from "../../review/work-status.js";
 
 const OUTPUT_DIR = path.join(projectRoot, "data", "output");
 const DOCUMENTS_DIR = path.join(projectRoot, "data", "documents");
@@ -31,6 +32,7 @@ export async function getNotices(req, res, next) {
           classification: data.classification,
           classificationSource: data.classificationSource,
           reviewed: data.reviewed,
+          workStatus: publicWorkStatus(data),
         };
       })
     );
@@ -134,12 +136,37 @@ export async function updateNoticeClassification(req, res, next) {
       reviewedAt: updated.reviewedAt,
       review: updated.review,
       relevance: updated.relevance,
+      workStatus: publicWorkStatus(updated),
     });
   } catch (error) {
     if (error.code === "NOTICE_NOT_FOUND") {
       return res.status(404).json({ error: error.message });
     }
     if (error.code === "INVALID_DECISION" || error.code === "INVALID_NOTICE_ID") {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+}
+
+export async function updateNoticeWorkStatus(req, res, next) {
+  try {
+    const updated = await setSavedWorkStatus(req.params.id, req.body?.workStatus, {
+      outputDir: req.app.get("outputDir") || OUTPUT_DIR,
+      documentsRoot: req.app.get("documentsRoot") || DOCUMENTS_DIR,
+    });
+    res.json({
+      referenceNumber: updated.notice?.referenceNumber,
+      classification: updated.classification,
+      classificationSource: updated.classificationSource,
+      reviewed: updated.reviewed,
+      workStatus: publicWorkStatus(updated),
+    });
+  } catch (error) {
+    if (error.code === "NOTICE_NOT_FOUND") {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.code === "INVALID_WORK_STATUS" || error.code === "INVALID_NOTICE_ID") {
       return res.status(400).json({ error: error.message });
     }
     next(error);

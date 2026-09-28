@@ -3,6 +3,8 @@ import { displayText, formatDateLabel, formatPeso, reviewStatusLabel, sourceLabe
 import ClassificationControls from './ClassificationControls.jsx'
 import NoticeDocuments from './NoticeDocuments.jsx'
 import StatusBadge from './StatusBadge.jsx'
+import WorkStatusControls from './WorkStatusControls.jsx'
+import { effectiveWorkStatus } from '../notices.js'
 
 function textValue(value) {
   const text = value == null ? '' : String(value).trim()
@@ -30,6 +32,8 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
   const [state, setState] = useState('loading')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [savingWork, setSavingWork] = useState(false)
+  const [workError, setWorkError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -75,12 +79,37 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
         reviewed: updated.reviewed,
         reviewedAt: updated.reviewedAt,
         review: updated.review ?? current?.review,
+        workStatus: updated.workStatus ?? current?.workStatus,
       }))
       onClassified(updated)
     } catch {
       setSaveError('Unable to update classification.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function saveWorkStatus(value) {
+    if (savingWork) return
+    setSavingWork(true)
+    setWorkError('')
+    try {
+      const response = await fetch(`/api/notices/${encodeURIComponent(noticeId)}/work-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workStatus: value }),
+      })
+      if (!response.ok) throw new Error('Unable to update work status')
+      const updated = await response.json()
+      setPacket((current) => ({
+        ...current,
+        workStatus: updated.workStatus,
+      }))
+      onClassified(updated)
+    } catch {
+      setWorkError('Unable to update work status.')
+    } finally {
+      setSavingWork(false)
     }
   }
 
@@ -165,6 +194,17 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
               onChoose={saveClassification}
             />
           </section>
+          {packet.classification === 'software' ? (
+            <section className="dossier-block work-status" aria-labelledby="work-status-title">
+              <h3 id="work-status-title" className="mono">Work status</h3>
+              <WorkStatusControls
+                current={effectiveWorkStatus(packet)}
+                saving={savingWork}
+                error={workError}
+                onChoose={saveWorkStatus}
+              />
+            </section>
+          ) : null}
         </>
       ) : null}
     </article>

@@ -18,6 +18,7 @@ import {
 import { noticeUrl, parseNoticeHtml, parseNoticeId } from './philgeps/notices.js';
 import { buildNoticeMetadata, savedNoticeFiles, writeNoticeMetadata } from './documents/metadata.js';
 import { classificationFields } from './review/decision.js';
+import { attachWorkStatus } from './review/work-status.js';
 import { keepReview } from './review/status.js';
 import { delay, log } from './log.js';
 
@@ -341,6 +342,7 @@ async function saveResult({ noticeId, notice, documents, relevance, text, docume
       reviewedAt: manual.reviewedAt || review.reviewedAt || null,
     }
     : classificationFields(storedRelevance, review);
+  const withWork = attachWorkStatus(fields, readSavedPacket(noticeId));
   const fileNames = savedNoticeFiles(documents);
   if (fileNames.length > 0) {
     await writeNoticeMetadata(buildNoticeMetadata({
@@ -363,7 +365,7 @@ async function saveResult({ noticeId, notice, documents, relevance, text, docume
     relevance: storedRelevance,
     requirements,
     review,
-    ...fields,
+    ...withWork,
   };
 
   const outputPath = path.join('data', 'output', `${noticeId}.json`);

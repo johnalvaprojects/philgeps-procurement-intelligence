@@ -28,15 +28,33 @@ export function sortNotices(notices) {
   })
 }
 
-export function softwareNotices(notices, limit = 5) {
-  return sortNotices(notices.filter((notice) => notice.classification === 'software')).slice(0, limit)
+export function effectiveWorkStatus(notice) {
+  if (notice?.classification !== 'software') return null
+  if (notice.workStatus === 'new' || notice.workStatus === 'in-progress' || notice.workStatus === 'done') {
+    return notice.workStatus
+  }
+  return 'new'
 }
 
-export function filterNotices(notices, { query, classification }) {
+export function softwareNotices(notices, limit = 5) {
+  return sortNotices(notices.filter((notice) => {
+    return notice.classification === 'software' && effectiveWorkStatus(notice) !== 'done'
+  })).slice(0, limit)
+}
+
+export function filterNotices(notices, { query, classification, workStatus = 'active' }) {
   const needle = query.trim().toLowerCase()
 
   return notices.filter((notice) => {
     if (classification !== 'all' && notice.classification !== classification) return false
+    if (classification === 'software' && workStatus !== 'all') {
+      const status = effectiveWorkStatus(notice)
+      if (workStatus === 'active') {
+        if (status === 'done') return false
+      } else if (status !== workStatus) {
+        return false
+      }
+    }
     if (!needle) return true
     const haystack = [notice.referenceNumber, notice.title, notice.organization]
       .join(' ')

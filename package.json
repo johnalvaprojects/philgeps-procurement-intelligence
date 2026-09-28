@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test",
-    "dev": "node --watch src/server/server.js"
+    "dev": "node --watch-path=./src --watch-path=./config src/server/server.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",

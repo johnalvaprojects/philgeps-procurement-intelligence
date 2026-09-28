@@ -74,6 +74,13 @@ export function classificationKind(value) {
   return 'unknown'
 }
 
+export function workStatusLabel(value) {
+  if (value === 'new') return 'New'
+  if (value === 'in-progress') return 'In progress'
+  if (value === 'done') return 'Done'
+  return ''
+}
+
 export function sourceLabel(value) {
   if (value === 'manual') return 'Manual'
   if (value === 'automatic') return 'Automatic'

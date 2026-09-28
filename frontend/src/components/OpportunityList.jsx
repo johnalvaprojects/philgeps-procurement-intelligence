@@ -1,4 +1,5 @@
-import { displayText, formatDateDots, formatPeso } from '../format.js'
+import { displayText, formatDateDots, formatPeso, workStatusLabel } from '../format.js'
+import { effectiveWorkStatus } from '../notices.js'
 import StatusBadge from './StatusBadge.jsx'
 
 export default function OpportunityList({ notices, state, onOpen }) {
@@ -39,6 +40,11 @@ export default function OpportunityList({ notices, state, onOpen }) {
                 <span className="row-date mono list-date list-closing">{formatDateDots(notice.deadline)}</span>
                 <span className="row-status">
                   <StatusBadge classification={notice.classification} />
+                  {notice.classification === 'software' ? (
+                    <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
+                      {workStatusLabel(effectiveWorkStatus(notice))}
+                    </span>
+                  ) : null}
                 </span>
                 <span className="row-arrow" aria-hidden="true">→</span>
               </button>

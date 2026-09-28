@@ -44,6 +44,7 @@ Copy `.env.example` to `.env` if that file is missing. `.env` is not committed. 
 - Scans public Small Value Procurement notices and separates software, review, and not-relevant titles
 - Reads PDF, DOCX, and spreadsheet attachments, and uses OCR when a PDF has no text layer
 - Review page with search, classification filters, and pagination
+- Separate work status for software opportunities: new, in progress, and done, kept across later scans
 - Manual mark for software, not relevant, or keep for review
 - Dark mode and a hold-to-scan control on the main page
 

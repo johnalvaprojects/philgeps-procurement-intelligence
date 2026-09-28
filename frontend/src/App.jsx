@@ -29,6 +29,7 @@ export default function App() {
   const [noticesState, setNoticesState] = useState('loading')
   const [query, setQuery] = useState('')
   const [classification, setClassification] = useState('all')
+  const [workStatus, setWorkStatus] = useState('active')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [scanning, setScanning] = useState(false)
@@ -149,6 +150,7 @@ export default function App() {
         classification: updated.classification,
         classificationSource: updated.classificationSource,
         reviewed: updated.reviewed,
+        workStatus: updated.workStatus ?? notice.workStatus,
       }
     }))
   }
@@ -178,6 +180,12 @@ export default function App() {
     setClassification(value)
   }
 
+  function updateWorkStatus(value) {
+    const next = value === workStatus ? 'active' : value
+    if (next !== workStatus) setPage(1)
+    setWorkStatus(next)
+  }
+
   function updatePageSize(size) {
     if (size === pageSize) return
     setPageSize(size)
@@ -191,8 +199,8 @@ export default function App() {
 
   const counts = noticesState === 'ready' ? countClassifications(notices) : EMPTY_COUNTS
   const visibleNotices = useMemo(
-    () => filterNotices(sortNotices(notices), { query, classification }),
-    [notices, query, classification],
+    () => filterNotices(sortNotices(notices), { query, classification, workStatus }),
+    [notices, query, classification, workStatus],
   )
   const pageCount = Math.max(1, Math.ceil(visibleNotices.length / pageSize) || 1)
   const currentPage = Math.min(page, pageCount)
@@ -250,6 +258,8 @@ export default function App() {
               onQueryChange={updateQuery}
               active={classification}
               onSelect={updateClassification}
+              workStatus={workStatus}
+              onWorkStatus={updateWorkStatus}
             />
             <OpportunityList notices={pageNotices} state={noticesState} onOpen={openNotice} />
             {noticesState === 'ready' ? (

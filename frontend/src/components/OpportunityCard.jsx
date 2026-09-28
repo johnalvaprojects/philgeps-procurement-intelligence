@@ -1,4 +1,5 @@
-import { displayText, formatDateDots, formatPeso } from '../format.js'
+import { displayText, formatDateDots, formatPeso, workStatusLabel } from '../format.js'
+import { effectiveWorkStatus } from '../notices.js'
 import StatusBadge from './StatusBadge.jsx'
 
 export default function OpportunityCard({ notice, onOpen, lead = false }) {
@@ -12,6 +13,11 @@ export default function OpportunityCard({ notice, onOpen, lead = false }) {
     >
       <span className="card-meta mono">
         <span>Ref / {displayText(id)}</span>
+        {notice.classification === 'software' ? (
+          <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
+            {workStatusLabel(effectiveWorkStatus(notice))}
+          </span>
+        ) : null}
         <span>{formatDateDots(notice.postedDate)}</span>
       </span>
       <span className="card-title display">{displayText(notice.title)}</span>

@@ -5,6 +5,7 @@ import {
   getNoticeDocuments,
   getNoticeDocument,
   updateNoticeClassification,
+  updateNoticeWorkStatus,
 } from "../controllers/notice-controller.js";
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.get("/:id/documents/:filename", getNoticeDocument);
 router.get("/:id", getNoticeById);
 
 router.patch("/:id/classification", updateNoticeClassification);
+router.patch("/:id/work-status", updateNoticeWorkStatus);
 
 export default router;

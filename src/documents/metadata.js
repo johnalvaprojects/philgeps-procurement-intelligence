@@ -106,6 +106,7 @@ export async function updateMetadataDecision(noticeId, fields, documentsRoot = p
     reviewed: true,
     reviewedAt: fields.reviewedAt,
   };
+  if (fields.workStatus) next.workStatus = fields.workStatus;
   await writeFile(filePath, `${JSON.stringify(next, null, 2)}\n`);
   return next;
 }

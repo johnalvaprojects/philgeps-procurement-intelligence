@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { classificationLabel } from '../classification/cache.js';
+import { attachWorkStatus } from './work-status.js';
 import { updateMetadataDecision } from '../documents/metadata.js';
 import { parseNoticeId } from '../philgeps/notices.js';
 import { log } from '../log.js';
@@ -58,7 +59,7 @@ export function applyManualDecision(packet, decision, reviewedAt = new Date()) {
   }
 
   relevance.reasons = reasons;
-  return {
+  return attachWorkStatus({
     ...packet,
     classification,
     classificationSource: 'manual',
@@ -66,7 +67,7 @@ export function applyManualDecision(packet, decision, reviewedAt = new Date()) {
     reviewedAt: timestamp,
     relevance,
     review: { status: 'reviewed', reviewedAt: timestamp, source: 'manual' },
-  };
+  }, packet);
 }
 
 export async function saveManualDecision(noticeId, decision, {
