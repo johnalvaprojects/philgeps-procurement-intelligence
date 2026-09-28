@@ -13,6 +13,22 @@
 
 **Author:** [John Solomon M. Alvarez](https://github.com/johnalvaprojects)
 
+## Preview
+
+![Procurement Intelligence dashboard](docs/preview1.png)
+
+![Dashboard in dark mode](docs/dark%20mode%20preview.png)
+
+![Featured software opportunities](docs/preview%202.png)
+
+![Software list with work status](docs/preview%203.png)
+
+![Review list](docs/preview%204.png)
+
+![Not relevant list](docs/preview%205.png)
+
+![Opportunity detail with classification and work status](docs/preview%206.png)
+
 ---
 
 ## Quick start
