@@ -12,6 +12,23 @@
   --highlight: #c6f54e;
   --highlight-ink: #111111;
   --pink: #f67591;
+  --pink-ink: #111111;
+
+  /* Semantic status chips (Software / Review / Not Relevant) */
+  --status-software-bg: var(--highlight);
+  --status-software-ink: var(--highlight-ink);
+  --status-review-bg: var(--pink);
+  --status-review-ink: var(--pink-ink);
+  --status-neutral-bg: #d4d4d4;
+  --status-neutral-ink: #111111;
+  --status-border: var(--border-strong);
+
+  /* Work-status marks on software rows/cards */
+  --work-mark-bg: var(--background);
+  --work-mark-ink: var(--foreground);
+  --work-mark-muted: var(--muted);
+  --work-mark-border: var(--border-strong);
+
   color-scheme: light;
 
   --font-display: "Anton", "Arial Narrow", Impact, sans-serif;
@@ -36,5 +53,23 @@
   --border-strong: #f5f5f5;
   --accent: #f5f5f5;
   --accent-ink: #111111;
+  --highlight: #c6f54e;
+  --highlight-ink: #111111;
+  --pink: #f67591;
+  --pink-ink: #111111;
+
+  --status-software-bg: var(--highlight);
+  --status-software-ink: var(--highlight-ink);
+  --status-review-bg: var(--pink);
+  --status-review-ink: var(--pink-ink);
+  --status-neutral-bg: #5c5c5c;
+  --status-neutral-ink: #f5f5f5;
+  --status-border: var(--border-strong);
+
+  --work-mark-bg: var(--surface);
+  --work-mark-ink: var(--foreground);
+  --work-mark-muted: var(--muted);
+  --work-mark-border: var(--border-strong);
+
   color-scheme: dark;
 }

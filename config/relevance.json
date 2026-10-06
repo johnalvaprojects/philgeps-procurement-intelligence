@@ -20,14 +20,22 @@
   "hardwareTerms": [
     "desktop computer",
     "laptop",
+    "computer set",
     "printer",
     "server",
     "router",
     "network switch",
     "network equipment",
+    "access point",
     "it equipment",
+    "ict equipment",
     "monitor",
     "cctv",
+    "ip camera",
+    "ups",
+    "projector",
+    "medical equipment",
+    "laboratory equipment",
     "office equipment",
     "office supplies",
     "furniture",
@@ -35,6 +43,13 @@
     "electrical works",
     "cleaning service",
     "vehicle",
-    "network switches"
+    "network switches",
+    "fire extinguisher",
+    "air cooler",
+    "plastic drum",
+    "ink cartridge",
+    "toner",
+    "tire",
+    "peripheral"
   ]
 }

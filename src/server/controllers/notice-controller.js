@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { projectRoot } from "../../project-root.js";
+import { readSavedSoftwareRequirements } from "../../extraction/extract-software-requirements.js";
 import { decideSavedNotice } from "../../review/decision.js";
 import { publicWorkStatus, setSavedWorkStatus } from "../../review/work-status.js";
 
@@ -52,6 +53,10 @@ export async function getNoticeById(req, res, next) {
 
     const content = await fs.readFile(filePath, "utf8");
     const notice = JSON.parse(content);
+    const extractedRequirements = await readSavedSoftwareRequirements(id, { outputDir: OUTPUT_DIR });
+    if (extractedRequirements) {
+      notice.extractedRequirements = extractedRequirements;
+    }
 
     res.json(notice);
   } catch (error) {

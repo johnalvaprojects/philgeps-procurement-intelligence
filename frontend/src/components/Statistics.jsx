@@ -3,7 +3,7 @@ import { padCount } from '../format.js'
 import LineHoverText from './LineHoverText.jsx'
 
 const ITEMS = [
-  { id: 'all', label: 'Opportunities', countKey: 'all' },
+  { id: 'all', label: 'Notices', countKey: 'all' },
   { id: 'software', label: 'Software', countKey: 'software' },
   { id: 'review', label: 'Review', countKey: 'review' },
   { id: 'not relevant', label: 'Not Relevant', countKey: 'notRelevant' },

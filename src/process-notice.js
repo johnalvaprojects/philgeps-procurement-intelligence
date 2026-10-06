@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { classifyDocumentForNotice, classifyText, downloadDecision, inspectionDecision, shouldDownloadAll } from './classification/relevance.js';
 import { extractDocumentText } from './extraction/extract.js';
+import { extractAndSaveSoftwareRequirements } from './extraction/extract-software-requirements.js';
 import { buildRequirements, procurementPortion, toProcurementDocument } from './extraction/requirements.js';
 import { get, requestDelayMs } from './philgeps/client.js';
 import {
@@ -15,7 +16,7 @@ import {
   saveDocument,
   saveTemporaryInspection,
 } from './philgeps/documents.js';
-import { noticeUrl, parseNoticeHtml, parseNoticeId } from './philgeps/notices.js';
+import { noticeUrl, parseNoticeHtml, parseNoticeId, structuredEvidenceText } from './philgeps/notices.js';
 import { buildNoticeMetadata, savedNoticeFiles, writeNoticeMetadata } from './documents/metadata.js';
 import { classificationFields } from './review/decision.js';
 import { attachWorkStatus } from './review/work-status.js';
@@ -61,7 +62,8 @@ export async function processNotice(input) {
   const rules = JSON.parse(readFileSync(path.join(root, 'config', 'relevance.json'), 'utf8'));
   const titleRelevance = classifyText(parsed.notice.title || '', rules);
   logRelevanceNotes(titleRelevance);
-  const decision = downloadDecision(titleRelevance);
+  let relevance = titleRelevance;
+  let decision = downloadDecision(titleRelevance);
 
   if (decision === 'skip') {
     log('INFO', 'Classification: hardware');
@@ -72,19 +74,50 @@ export async function processNotice(input) {
       noticeId,
       notice: parsed.notice,
       documents: [],
-      relevance: titleRelevance,
+      relevance,
       text: '',
       documentName: null,
     });
   }
 
+  // Cheap structured PhilGEPS fields before attachment download / OCR.
+  if (decision === 'inspect') {
+    const structuredText = structuredEvidenceText(parsed.notice);
+    if (structuredText.trim()) {
+      const structuredRelevance = classifyDocumentForNotice(structuredText, rules, parsed.notice.title || '');
+      log('INFO', 'Checked PhilGEPS structured detail fields before attachments');
+      logRelevanceNotes(structuredRelevance);
+      const structuredDecision = downloadDecision(structuredRelevance);
+      if (structuredDecision === 'skip') {
+        await discardNoticeDownloads(noticeId);
+        log('INFO', 'Classification: hardware');
+        log('INFO', 'Skipped without downloading attachments');
+        log('INFO', `Skipped notice ${noticeId}. Structured PhilGEPS fields show a non-software purchase.`);
+        return saveResult({
+          noticeId,
+          notice: parsed.notice,
+          documents: [],
+          relevance: structuredRelevance,
+          text: '',
+          documentName: null,
+        });
+      }
+      if (structuredDecision === 'download') {
+        relevance = structuredRelevance;
+        decision = 'download';
+        log('INFO', `Notice ${noticeId} looks like software from PhilGEPS structured fields.`);
+      } else {
+        relevance = structuredRelevance;
+      }
+    }
+  }
+
   const links = await loadDocumentLinks(parsed, url);
-  let relevance = titleRelevance;
 
   if (decision === 'inspect') {
     const inspection = await confirmVagueNotice(links, rules, noticeId, parsed.notice.title);
     if (shouldDownloadAll(decision, inspection.outcome === 'software')) {
-      relevance = { ...titleRelevance, isRelevant: true, needsReview: false, category: 'software' };
+      relevance = inspection.relevance;
       log('INFO', `Notice ${noticeId} is software. Downloading every public attachment.`);
     } else if (inspection.outcome === 'skip') {
       await discardNoticeDownloads(noticeId);
@@ -221,7 +254,19 @@ export async function confirmVagueNotice(links, rules, noticeId, noticeTitle) {
   const temporary = await saveTemporaryInspection(links[0].filename, bytes);
 
   return inspectTemporaryFile(temporary, noticeId, async () => {
-    const extracted = await extractDocumentText(temporary.filePath);
+    const extracted = await extractDocumentText(temporary.filePath, {
+      ocrShouldContinue: (textSoFar) => {
+        if (!textSoFar || String(textSoFar).replace(/\s+/g, '').length < 40) return true;
+        const preview = classifyDocumentForNotice(
+          procurementPortion(textSoFar).slice(0, 4000),
+          rules,
+          noticeTitle,
+        );
+        const outcome = inspectionDecision(preview);
+        // Keep OCR going only while evidence is still unclear.
+        return outcome === 'unclear';
+      },
+    });
     if (!extracted.hasUsableText) {
       return {
         outcome: 'unclear',
@@ -373,6 +418,21 @@ async function saveResult({ noticeId, notice, documents, relevance, text, docume
   await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`);
   const relativeOutput = outputPath.split(path.sep).join('/');
   log('INFO', `Saved result ${relativeOutput}`);
+
+  if (fields.classification === 'software') {
+    try {
+      await extractAndSaveSoftwareRequirements({
+        notice,
+        documents,
+        noticeId,
+        outputDir: path.join(root, 'data', 'output'),
+        documentsRoot: path.join(root, 'data', 'documents'),
+        preferExtracted: true,
+      });
+    } catch (error) {
+      log('WARN', `Requirement extraction failed for notice ${noticeId}: ${error.message}`);
+    }
+  }
 
   return {
     result,

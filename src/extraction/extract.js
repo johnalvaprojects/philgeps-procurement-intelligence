@@ -3,11 +3,11 @@ import { extractDocxText } from './docx.js';
 import { extractPdfText } from './pdf.js';
 import { extractXlsxText } from './xlsx.js';
 
-export async function extractDocumentText(filePath) {
+export async function extractDocumentText(filePath, options = {}) {
   const extension = path.extname(filePath).toLowerCase();
 
   if (extension === '.pdf') {
-    return extractPdfText(filePath);
+    return extractPdfText(filePath, options);
   }
 
   if (extension === '.xlsx') {

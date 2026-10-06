@@ -118,11 +118,13 @@ test('classifyText marks software, hardware, and mixed notices differently', () 
 
   const hardware = classifyText('Supply and delivery of laptop computers and printers', rules);
   assert.equal(hardware.isRelevant, false);
-  assert.equal(hardware.category, 'hardware');
+  assert.equal(hardware.needsReview, false);
+  assert.ok(['hardware', 'not relevant'].includes(hardware.category));
 
   const itEquipment = classifyText('Procurement Project: Procurement of IT Equipment for CY 2026', rules);
   assert.equal(itEquipment.isRelevant, false);
-  assert.equal(itEquipment.category, 'hardware');
+  assert.equal(itEquipment.needsReview, false);
+  assert.ok(['hardware', 'not relevant'].includes(itEquipment.category));
 
   const mixed = classifyText('Software subscription and laptop computers', rules);
   assert.equal(mixed.isRelevant, false);

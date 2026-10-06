@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { displayText, formatDateLabel, formatPeso, reviewStatusLabel, sourceLabel } from '../format.js'
 import ClassificationControls from './ClassificationControls.jsx'
 import NoticeDocuments from './NoticeDocuments.jsx'
+import ProcurementRequirements from './ProcurementRequirements.jsx'
 import StatusBadge from './StatusBadge.jsx'
 import WorkStatusControls from './WorkStatusControls.jsx'
 import { effectiveWorkStatus } from '../notices.js'
@@ -120,7 +121,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
     <article className="dossier" aria-labelledby="dossier-title">
       <header className="dossier-bar">
         <button type="button" className="back-link mono" onClick={onBack} data-autofocus>
-          <span aria-hidden="true">← </span>Back to opportunities
+          <span aria-hidden="true">← </span>Back to notices
         </button>
         <p className="mono dossier-case">Case / {displayText(noticeId)}</p>
         {packet ? (
@@ -184,6 +185,13 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
           </div>
 
           <NoticeDocuments noticeId={noticeId} />
+
+          {packet.classification === 'software' ? (
+            <ProcurementRequirements
+              requirements={packet.extractedRequirements}
+              noticeId={noticeId}
+            />
+          ) : null}
 
           <section className="dossier-block classification" aria-labelledby="classification-title">
             <h3 id="classification-title" className="mono">Classification</h3>

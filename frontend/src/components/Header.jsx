@@ -11,14 +11,15 @@ function storedTheme() {
   }
 }
 
-export default function Header({ online, scanning, onShowOpportunities, onShowSoftware }) {
-  const opportunitiesRef = useRef(null)
+export default function Header({ online, scanning, scanRangeLabel = '', onShowOpportunities, onShowSoftware }) {
+  const noticesRef = useRef(null)
   const softwareRef = useRef(null)
   const themeRef = useRef(null)
   const [theme, setTheme] = useState(storedTheme)
   let status = 'CHECKING'
   if (online === true) status = scanning ? 'SCANNING' : 'ONLINE'
   if (online === false) status = 'OFFLINE'
+  const showRange = scanning && scanRangeLabel
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -42,10 +43,10 @@ export default function Header({ online, scanning, onShowOpportunities, onShowSo
           type="button"
           className="nav-link mono"
           onClick={onShowOpportunities}
-          onMouseEnter={() => opportunitiesRef.current?.play()}
-          onFocus={() => opportunitiesRef.current?.play()}
+          onMouseEnter={() => noticesRef.current?.play()}
+          onFocus={() => noticesRef.current?.play()}
         >
-          <LineHoverText ref={opportunitiesRef} text="Opportunities" />
+          <LineHoverText ref={noticesRef} text="Notices" />
         </button>
         <button
           type="button"
@@ -69,7 +70,10 @@ export default function Header({ online, scanning, onShowOpportunities, onShowSo
       </nav>
       <p className={`system-status mono status-${online} ${scanning ? 'is-scanning' : ''}`} aria-live="polite">
         <span className="status-dot" aria-hidden="true" />
-        {status}
+        <span className="system-status-copy">
+          <span>{status}</span>
+          {showRange ? <span className="system-status-range">{scanRangeLabel}</span> : null}
+        </span>
       </p>
     </header>
   )

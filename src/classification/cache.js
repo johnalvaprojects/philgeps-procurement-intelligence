@@ -16,6 +16,9 @@ export function cachedClassification(packet) {
 }
 
 export function noticeScanPlan(notice, rules, packet) {
+  if (packet?.classificationSource === 'manual') {
+    return { action: 'reuse', label: packet.classification || cachedClassification(packet)?.label || 'review' };
+  }
   const decision = downloadDecision(classifyText(notice?.title || '', rules));
   if (decision === 'skip') return { action: 'skip' };
   const cached = cachedClassification(packet);

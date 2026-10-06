@@ -35,6 +35,22 @@ export function publishTime(value) {
   return Number.isNaN(time) ? null : time
 }
 
+/** Calendar day from an HTML date input value (YYYY-MM-DD), as UTC midnight. */
+export function filterDayTime(value) {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2]) - 1
+  const day = Number(match[3])
+  const time = Date.UTC(year, month, day)
+  if (Number.isNaN(time)) return null
+  const date = new Date(time)
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+    return null
+  }
+  return time
+}
+
 export function formatDateLabel(value) {
   const parts = dateParts(value)
   if (!parts) return displayText(value)

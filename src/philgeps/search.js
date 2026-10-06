@@ -3,7 +3,11 @@ import { baseUrl, get, requestDelayMs } from './client.js';
 import { delay, log } from '../log.js';
 
 const MAX_LIST_PAGES = 10;
-const WINDOW_MAX_PAGES = 40;
+/*
+ * Emergency ceiling only — normal scans stop when publish dates move before FROM.
+ * 200 is high enough for busy/custom windows (old hard cap was 40) without unbounded loops.
+ */
+export const WINDOW_SAFETY_MAX_PAGES = 200;
 const MONTHS = {
   jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
@@ -60,7 +64,12 @@ export function isPublishedInWindow(postedDate, window) {
 export function pageIsBeforeWindow(rows, window) {
   const dates = rows.map((row) => parsePhilgepsDate(row.postedDate)).filter(Boolean);
   if (dates.length === 0) return false;
+  // Inclusive FROM: only stop when every parseable date is strictly before window.start.
   return dates.every((date) => calendarDay(date) < calendarDay(window.start));
+}
+
+export function pageReferenceFingerprint(rows) {
+  return rows.map((row) => row.referenceNumber).filter(Boolean).join(',');
 }
 
 function cellText($, row, label) {
@@ -129,35 +138,74 @@ export function selectSvpInWindow(rows, window) {
   return selected;
 }
 
-export async function fetchSvpInWindow(window, maxPages = WINDOW_MAX_PAGES) {
+export async function fetchSvpInWindow(window, options = {}) {
+  const opts = typeof options === 'number' ? { maxPages: options } : options;
+  const maxPages = opts.maxPages ?? WINDOW_SAFETY_MAX_PAGES;
+  const wait = opts.delay ?? delay;
+  const loadPage = opts.getHtml;
   const selected = [];
   let coveredWindow = false;
+  let pagesRead = 0;
+  let previousFingerprint = null;
+  let stopReason = 'safety-limit';
 
   for (let page = 1; page <= maxPages; page += 1) {
-    if (page > 1) await delay(requestDelayMs());
+    if (page > 1) await wait(requestDelayMs());
     const url = `${baseUrl()}/indexes/view-more-open-tenders?page=${page}&direction=Tenders.id+desc`;
     log('INFO', `Reading open notices, page ${page}`);
-    const html = await get(url);
+    const html = loadPage ? await loadPage(page) : await get(url);
     const rows = parseOpportunityRows(html);
+    pagesRead = page;
+
     if (rows.length === 0) {
+      log('INFO', 'No notices returned on this page');
       coveredWindow = true;
+      stopReason = 'empty-page';
       break;
     }
+
+    const fingerprint = pageReferenceFingerprint(rows);
+    if (previousFingerprint != null && fingerprint === previousFingerprint) {
+      log('WARN', `Page ${page} repeated the same notice IDs as the previous page; stopping pagination`);
+      stopReason = 'repeated-page';
+      break;
+    }
+    previousFingerprint = fingerprint;
 
     for (const row of selectSvpInWindow(rows, window)) {
       if (!selected.some((item) => item.referenceNumber === row.referenceNumber)) selected.push(row);
     }
 
     if (pageIsBeforeWindow(rows, window)) {
-      log('INFO', 'Publish dates on this page are before the scan window');
+      log('INFO', 'Reached notices older than requested FROM date');
       coveredWindow = true;
+      stopReason = 'before-from';
       break;
     }
   }
 
-  if (!coveredWindow) {
-    log('WARN', `Stopped after ${maxPages} list pages before the publish dates moved fully before the scan window.`);
+  if (coveredWindow) {
+    log('INFO', `Pagination complete after ${pagesRead} page${pagesRead === 1 ? '' : 's'}`);
+  } else if (stopReason === 'repeated-page') {
+    log('WARN', 'Requested date window may be incomplete');
+  } else {
+    log('WARN', `Emergency pagination safety limit reached at page ${maxPages}`);
+    log('WARN', 'Requested date window may be incomplete');
   }
+
+  const completionReason = ({
+    'before-from': 'date-boundary',
+    'empty-page': 'empty-page',
+    'repeated-page': 'repeated-page',
+    'safety-limit': 'safety-limit',
+  })[stopReason] || stopReason;
+
+  selected.pagination = {
+    complete: coveredWindow === true,
+    completionReason,
+    pagesRead,
+    stopReason,
+  };
 
   return selected;
 }

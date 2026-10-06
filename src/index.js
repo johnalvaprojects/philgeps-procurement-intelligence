@@ -1,16 +1,18 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { batchLimit, fetchLatestSvp } from './philgeps/search.js';
 import { processNotice } from './process-notice.js';
 import { projectRoot, useProjectRoot } from './project-root.js';
 import { runReclassify } from './reclassify.js';
+import { loadRelevanceRules, runTitleReclassify } from './reclassify-title.js';
 import { decideSavedNotice, normalizeDecision, saveManualDecision } from './review/decision.js';
 import { startReviewServer } from './review/server.js';
 import { markReviewed } from './review/status.js';
 import { parseNoticeId } from './philgeps/notices.js';
 import { log, startScanLog } from './log.js';
 import { processCollectedNotices, runScan, writeReviewList } from './scan.js';
+import { extractAndSaveSoftwareRequirements } from './extraction/extract-software-requirements.js';
 
 useProjectRoot();
 
@@ -33,6 +35,21 @@ async function runReclassifyCommand() {
     outputDir: path.join('data', 'output'),
     documentsRoot: path.join('data', 'documents'),
     rules,
+    refreshReviewList: writeReviewList,
+  });
+}
+
+async function runTitleReclassifyCommand({ dryRun = false } = {}) {
+  if (!dryRun) {
+    startScanLog();
+    log('INFO', 'Title-only reclassify started');
+  } else {
+    log('INFO', 'Title-only reclassify dry-run started');
+  }
+  await runTitleReclassify({
+    outputDir: path.join(projectRoot, 'data', 'output'),
+    rules: loadRelevanceRules(projectRoot),
+    dryRun,
     refreshReviewList: writeReviewList,
   });
 }
@@ -111,6 +128,40 @@ if (args[0] === '--reviewed') {
     log('ERROR', error.message);
     process.exitCode = 1;
   });
+} else if (args[0] === '--reclassify-title') {
+  const dryRun = args.includes('--dry-run');
+  runTitleReclassifyCommand({ dryRun }).catch((error) => {
+    log('ERROR', error.message);
+    process.exitCode = 1;
+  });
+} else if (args[0] === '--extract-requirements') {
+  (async () => {
+    const outputDir = path.join(projectRoot, 'data', 'output');
+    const documentsRoot = path.join(projectRoot, 'data', 'documents');
+    const onlyId = args[1] && /^\d+$/.test(args[1]) ? args[1] : null;
+    const names = onlyId
+      ? [`${onlyId}.json`]
+      : (await readdir(outputDir)).filter((name) => /^\d+\.json$/.test(name));
+    let count = 0;
+    for (const name of names) {
+      const packet = JSON.parse(await readFile(path.join(outputDir, name), 'utf8'));
+      if (packet.classification !== 'software') continue;
+      const noticeId = packet.notice?.referenceNumber || name.replace(/\.json$/, '');
+      await extractAndSaveSoftwareRequirements({
+        notice: packet.notice,
+        documents: packet.documents || [],
+        noticeId,
+        outputDir,
+        documentsRoot,
+        preferExtracted: true,
+      });
+      count += 1;
+    }
+    log('INFO', `Extracted requirements for ${count} software notice${count === 1 ? '' : 's'}`);
+  })().catch((error) => {
+    log('ERROR', error.message);
+    process.exitCode = 1;
+  });
 } else if (args[0] === '--scan') {
   runScan()
     .then((result) => {
@@ -146,6 +197,8 @@ if (args[0] === '--reviewed') {
   console.error('Usage: node src/index.js <notice number or URL>');
   console.error('       node src/index.js --scan');
   console.error('       node src/index.js --reclassify');
+  console.error('       node src/index.js --reclassify-title [--dry-run]');
+  console.error('       node src/index.js --extract-requirements [noticeId]');
   console.error('       node src/index.js --svp 5');
   console.error('       node src/index.js --list');
   console.error('       node src/index.js --review');

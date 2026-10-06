@@ -41,33 +41,74 @@ function itemsToLines(items) {
   return output + line.trimEnd();
 }
 
-export async function extractPdfText(filePath) {
-  const data = new Uint8Array(await readFile(filePath));
-  const document = await getDocument({ data, verbosity: 0 }).promise;
-  const pages = [];
-
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    pages.push(itemsToLines(content.items));
+function releasePdfPage(page) {
+  if (!page || typeof page.cleanup !== 'function') return;
+  try {
+    page.cleanup();
+  } catch {
+    // cleanup must never mask extraction errors
   }
+}
 
-  const directText = pages.join('\n');
-  if (hasUsableText(directText)) {
+async function destroyPdfDocument(document) {
+  if (!document || typeof document.destroy !== 'function') return;
+  try {
+    await document.destroy();
+  } catch {
+    // cleanup must never mask extraction errors
+  }
+}
+
+export async function extractPdfText(filePath, {
+  getDocumentFn = getDocument,
+  readFileFn = readFile,
+  ocrPdfPagesFn = ocrPdfPages,
+  ocrShouldContinue,
+  ocrMode = 'classification',
+  maxOcrPages,
+} = {}) {
+  const data = new Uint8Array(await readFileFn(filePath));
+  let document;
+
+  try {
+    document = await getDocumentFn({ data, verbosity: 0 }).promise;
+    const pageCount = document.numPages;
+    const pages = [];
+
+    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+      let page;
+      try {
+        page = await document.getPage(pageNumber);
+        const content = await page.getTextContent();
+        pages.push(itemsToLines(content.items));
+      } finally {
+        releasePdfPage(page);
+      }
+    }
+
+    const directText = pages.join('\n');
+    if (hasUsableText(directText)) {
+      return {
+        text: directText,
+        pageCount,
+        hasUsableText: true,
+        usedOcr: false,
+      };
+    }
+
+    log('INFO', 'PDF has no usable text. Running progressive OCR.');
+    const ocrText = await ocrPdfPagesFn(document, {
+      shouldContinue: typeof ocrShouldContinue === 'function' ? ocrShouldContinue : undefined,
+      mode: ocrMode === 'extraction' ? 'extraction' : 'classification',
+      maxPages: maxOcrPages,
+    });
     return {
-      text: directText,
-      pageCount: document.numPages,
-      hasUsableText: true,
-      usedOcr: false,
+      text: ocrText,
+      pageCount,
+      hasUsableText: hasUsableText(ocrText),
+      usedOcr: true,
     };
+  } finally {
+    await destroyPdfDocument(document);
   }
-
-  log('INFO', 'PDF has no usable text. Running OCR.');
-  const ocrText = await ocrPdfPages(document);
-  return {
-    text: ocrText,
-    pageCount: document.numPages,
-    hasUsableText: hasUsableText(ocrText),
-    usedOcr: true,
-  };
 }

@@ -10,7 +10,14 @@ import OpportunityList from './components/OpportunityList.jsx'
 import OpportunityPager from './components/OpportunityPager.jsx'
 import Statistics from './components/Statistics.jsx'
 import { padCount } from './format.js'
-import { countClassifications, filterNotices, softwareNotices, sortNotices } from './notices.js'
+import {
+  countClassifications,
+  featuredNotices,
+  filterNotices,
+  noticesInPublishedRange,
+  sortNotices,
+} from './notices.js'
+import { formatScanRangeLabel, validateScanRange } from './scan-range.js'
 import { prefersReducedMotion } from './useReducedMotion.js'
 import './App.css'
 
@@ -30,10 +37,15 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [classification, setClassification] = useState('all')
   const [workStatus, setWorkStatus] = useState('active')
+  const [publishedFrom, setPublishedFrom] = useState('')
+  const [publishedTo, setPublishedTo] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState('')
+  const [scanFrom, setScanFrom] = useState('')
+  const [scanTo, setScanTo] = useState('')
+  const [activeScanRange, setActiveScanRange] = useState(null)
   const [selected, setSelected] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const wasScanning = useRef(false)
@@ -81,7 +93,11 @@ export default function App() {
         return response.json()
       })
       .then((body) => {
-        if (!cancelled && body?.running === true) setScanning(true)
+        if (cancelled) return
+        if (body?.running === true) {
+          setScanning(true)
+          if (body.from && body.to) setActiveScanRange({ from: body.from, to: body.to })
+        }
       })
       .catch(() => {})
 
@@ -104,7 +120,14 @@ export default function App() {
         if (!response.ok) return
         const body = await response.json()
         if (stopped) return
-        if (body?.running !== true) setScanning(false)
+        if (body?.running !== true) {
+          setScanning(false)
+          setActiveScanRange(null)
+          return
+        }
+        if (body.from && body.to) {
+          setActiveScanRange({ from: body.from, to: body.to })
+        }
       } catch {
         // Keep the current state and try again on the next poll.
       }
@@ -124,22 +147,57 @@ export default function App() {
     if (!wasScanning.current) return
     wasScanning.current = false
     setScanError('')
+    setActiveScanRange(null)
     loadNotices()
   }, [scanning, loadNotices])
 
   async function startScan() {
     if (scanning) return
     setScanError('')
+    const validation = validateScanRange(scanFrom, scanTo)
+    if (!validation.ok) {
+      setScanError(validation.error)
+      return
+    }
+
     try {
-      const response = await fetch('/api/scan', { method: 'POST' })
-      if (response.status === 202 || response.status === 409) {
+      const headers = validation.payload
+        ? { 'Content-Type': 'application/json' }
+        : undefined
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers,
+        body: validation.payload ? JSON.stringify(validation.payload) : undefined,
+      })
+      if (response.status === 202) {
+        const body = await response.json().catch(() => ({}))
         setScanning(true)
+        if (body?.from && body?.to) {
+          setActiveScanRange({ from: body.from, to: body.to })
+        } else {
+          setActiveScanRange(null)
+        }
+        return
+      }
+      if (response.status === 409) {
+        setScanning(true)
+        return
+      }
+      if (response.status === 400) {
+        const body = await response.json().catch(() => ({}))
+        setScanError(body?.error || 'Invalid scan date range.')
         return
       }
       setScanError('Unable to start the scan.')
     } catch {
       setScanError('Unable to start the scan.')
     }
+  }
+
+  function clearScanRange() {
+    setScanFrom('')
+    setScanTo('')
+    setScanError('')
   }
 
   function applyClassification(updated) {
@@ -186,29 +244,73 @@ export default function App() {
     setWorkStatus(next)
   }
 
+  function updatePublishedFrom(value) {
+    if (value !== publishedFrom) setPage(1)
+    setPublishedFrom(value)
+  }
+
+  function updatePublishedTo(value) {
+    if (value !== publishedTo) setPage(1)
+    setPublishedTo(value)
+  }
+
+  function clearPublishedDates() {
+    if (!publishedFrom && !publishedTo) return
+    setPublishedFrom('')
+    setPublishedTo('')
+    setPage(1)
+  }
+
   function updatePageSize(size) {
     if (size === pageSize) return
     setPageSize(size)
     setPage(1)
   }
 
-  function showOpportunities(filter) {
+  function showOpportunities(filter, { scrollTo = 'list' } = {}) {
     if (filter) updateClassification(filter)
-    scrollToOpportunities()
+    if (scrollTo === 'featured') scrollToFeatured()
+    else scrollToOpportunities()
   }
 
-  const counts = noticesState === 'ready' ? countClassifications(notices) : EMPTY_COUNTS
+  const dateScopedNotices = useMemo(
+    () => noticesInPublishedRange(notices, publishedFrom, publishedTo),
+    [notices, publishedFrom, publishedTo],
+  )
+  const counts = noticesState === 'ready' ? countClassifications(dateScopedNotices) : EMPTY_COUNTS
   const visibleNotices = useMemo(
-    () => filterNotices(sortNotices(notices), { query, classification, workStatus }),
-    [notices, query, classification, workStatus],
+    () => filterNotices(sortNotices(notices), {
+      query,
+      classification,
+      workStatus,
+      publishedFrom,
+      publishedTo,
+    }),
+    [notices, query, classification, workStatus, publishedFrom, publishedTo],
   )
   const pageCount = Math.max(1, Math.ceil(visibleNotices.length / pageSize) || 1)
   const currentPage = Math.min(page, pageCount)
   const pageNotices = visibleNotices.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  const featured = useMemo(() => softwareNotices(notices, FEATURED_LIMIT), [notices])
+  const featured = useMemo(
+    () => featuredNotices(dateScopedNotices, classification, FEATURED_LIMIT),
+    [dateScopedNotices, classification],
+  )
+  const featuredTotal = {
+    all: counts.all,
+    software: counts.software,
+    review: counts.review,
+    'not relevant': counts.notRelevant,
+  }[classification] ?? counts.software
 
   function scrollToOpportunities() {
     document.getElementById('opportunities')?.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }
+
+  function scrollToFeatured() {
+    document.getElementById('featured')?.scrollIntoView({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       block: 'start',
     })
@@ -228,29 +330,46 @@ export default function App() {
         <Header
           online={online}
           scanning={scanning}
+          scanRangeLabel={activeScanRange
+            ? formatScanRangeLabel(activeScanRange.from, activeScanRange.to)
+            : ''}
           onShowOpportunities={() => showOpportunities()}
           onShowSoftware={() => showOpportunities('software')}
         />
         <main>
           <Hero
-            total={counts.all}
+            total={counts.software}
             state={noticesState}
             scanning={scanning}
             scanError={scanError}
+            scanFrom={scanFrom}
+            scanTo={scanTo}
+            onScanFromChange={setScanFrom}
+            onScanToChange={setScanTo}
+            onClearScanRange={clearScanRange}
             onScan={startScan}
           />
-          <Statistics counts={counts} active={classification} onSelect={showOpportunities} />
+          <Statistics
+            counts={counts}
+            active={classification}
+            onSelect={(filter) => showOpportunities(filter, { scrollTo: 'featured' })}
+          />
           <FeaturedOpportunities
             notices={featured}
-            total={counts.software}
+            total={featuredTotal}
             state={noticesState}
+            category={classification}
             onOpen={openNotice}
-            onViewAll={() => showOpportunities('software')}
+            onViewAll={() => showOpportunities(classification)}
           />
           <section id="opportunities" className="opportunities" aria-labelledby="opportunities-title">
-            <div className="section-rule">
-              <h2 id="opportunities-title" className="mono">
-                All opportunities / {noticesState === 'ready' ? padCount(visibleNotices.length) : '···'}
+            <div className="section-rule opportunities-rule">
+              <h2 id="opportunities-title" className="opportunities-heading">
+                <span className="mono">All notices</span>
+                <span className="opportunities-slash mono" aria-hidden="true">/</span>
+                <span className="opportunities-count display">
+                  {noticesState === 'ready' ? padCount(visibleNotices.length) : '···'}
+                </span>
               </h2>
             </div>
             <NoticeFilters
@@ -260,6 +379,11 @@ export default function App() {
               onSelect={updateClassification}
               workStatus={workStatus}
               onWorkStatus={updateWorkStatus}
+              publishedFrom={publishedFrom}
+              publishedTo={publishedTo}
+              onPublishedFromChange={updatePublishedFrom}
+              onPublishedToChange={updatePublishedTo}
+              onClearPublishedDates={clearPublishedDates}
             />
             <OpportunityList notices={pageNotices} state={noticesState} onOpen={openNotice} />
             {noticesState === 'ready' ? (
