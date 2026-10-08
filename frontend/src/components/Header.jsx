@@ -11,9 +11,10 @@ function storedTheme() {
   }
 }
 
-export default function Header({ online, scanning, scanRangeLabel = '', onShowOpportunities, onShowSoftware }) {
+export default function Header({ online, scanning, scanRangeLabel = '', onShowOpportunities, onShowSoftware, onShowReports }) {
   const noticesRef = useRef(null)
   const softwareRef = useRef(null)
+  const reportsRef = useRef(null)
   const themeRef = useRef(null)
   const [theme, setTheme] = useState(storedTheme)
   let status = 'CHECKING'
@@ -56,6 +57,16 @@ export default function Header({ online, scanning, scanRangeLabel = '', onShowOp
           onFocus={() => softwareRef.current?.play()}
         >
           <LineHoverText ref={softwareRef} text="Software" />
+        </button>
+        <button
+          type="button"
+          className="nav-link mono"
+          onClick={onShowReports}
+          onMouseEnter={() => reportsRef.current?.play()}
+          onMouseLeave={() => reportsRef.current?.restore()}
+          onBlur={() => reportsRef.current?.restore()}
+        >
+          <LineHoverText ref={reportsRef} text="Reports" />
         </button>
         <button
           type="button"

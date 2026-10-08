@@ -1,4 +1,4 @@
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+import { DATE_SOURCE_ISO, formatCompactDate } from './format.js'
 
 export function parseIsoCalendarDay(value) {
   if (typeof value !== 'string') return null
@@ -52,7 +52,7 @@ export function formatScanRangeLabel(from, to) {
   const start = parseIsoCalendarDay(from)
   const end = parseIsoCalendarDay(to)
   if (!start || !end) return ''
-  const left = `${MONTHS[start.getMonth()]} ${String(start.getDate()).padStart(2, '0')}`
-  const right = `${MONTHS[end.getMonth()]} ${String(end.getDate()).padStart(2, '0')}`
+  const left = formatCompactDate(from, DATE_SOURCE_ISO)
+  const right = formatCompactDate(to, DATE_SOURCE_ISO)
   return `${left} — ${right}`
 }

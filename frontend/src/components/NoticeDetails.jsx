@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { displayText, formatDateLabel, formatPeso, reviewStatusLabel, sourceLabel } from '../format.js'
+import { createPortal } from 'react-dom'
+import { displayText, formatLongDate, formatPeso, reviewStatusLabel, sourceLabel } from '../format.js'
+import CaseReport from '../reports/CaseReport.jsx'
 import ClassificationControls from './ClassificationControls.jsx'
 import NoticeDocuments from './NoticeDocuments.jsx'
 import ProcurementRequirements from './ProcurementRequirements.jsx'
@@ -35,6 +37,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
   const [saveError, setSaveError] = useState('')
   const [savingWork, setSavingWork] = useState(false)
   const [workError, setWorkError] = useState('')
+  const [printing, setPrinting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -120,12 +123,19 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
   return (
     <article className="dossier" aria-labelledby="dossier-title">
       <header className="dossier-bar">
-        <button type="button" className="back-link mono" onClick={onBack} data-autofocus>
-          <span aria-hidden="true">← </span>Back to notices
-        </button>
-        <p className="mono dossier-case">Case / {displayText(noticeId)}</p>
+        <div className="dossier-bar-start">
+          <button type="button" className="back-link mono" onClick={onBack} data-autofocus>
+            <span aria-hidden="true">← </span>Back to notices
+          </button>
+          <p className="mono dossier-case">Case / {displayText(noticeId)}</p>
+        </div>
         {packet ? (
-          <StatusBadge classification={packet.classification} source={packet.classificationSource} />
+          <div className="dossier-bar-end">
+            <button type="button" className="back-link mono" onClick={() => setPrinting(true)}>
+              Print / Save PDF
+            </button>
+            <StatusBadge classification={packet.classification} source={packet.classificationSource} />
+          </div>
         ) : null}
       </header>
 
@@ -160,11 +170,11 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
               <dl className="facts">
                 <div>
                   <dt className="mono">Published</dt>
-                  <dd>{formatDateLabel(notice.postedDate)}</dd>
+                  <dd>{formatLongDate(notice.postedDate)}</dd>
                 </div>
                 <div>
                   <dt className="mono">Closing</dt>
-                  <dd>{formatDateLabel(notice.deadline)}</dd>
+                  <dd>{formatLongDate(notice.deadline)}</dd>
                 </div>
                 <div>
                   <dt className="mono">Source</dt>
@@ -214,6 +224,10 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
             </section>
           ) : null}
         </>
+      ) : null}
+      {printing && packet ? createPortal(
+        <CaseReport packet={packet} onClose={() => setPrinting(false)} />,
+        document.body,
       ) : null}
     </article>
   )

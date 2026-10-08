@@ -10,6 +10,7 @@ import { projectRoot, useProjectRoot } from './project-root.js';
 import { packetsToRows, renderReviewList } from './review/list.js';
 import { countScanRows, formatScanSummary, formatWindowLabel } from './review/summary.js';
 import { resolveScanPublicationWindow } from './scan-range.js';
+import { persistFinishedScanReport } from './scan-reports.js';
 import { finishScanProgress, getScanProgress, resetScanProgress, updateScanProgress } from './scan-progress.js';
 import { delay, log, startScanLog, writeLogBlock } from './log.js';
 
@@ -41,6 +42,8 @@ function summaryRow(referenceNumber, processed, error, extras = {}) {
       error: error.message,
       alreadyProcessed: false,
       downloadedCount: 0,
+      classificationSource: null,
+      reviewed: null,
     };
   }
 
@@ -55,6 +58,8 @@ function summaryRow(referenceNumber, processed, error, extras = {}) {
     error: null,
     alreadyProcessed: extras.alreadyProcessed === true,
     downloadedCount: extras.alreadyProcessed ? 0 : (processed.downloadedCount || 0),
+    classificationSource: processed.result.classificationSource || null,
+    reviewed: processed.result.reviewed === true ? true : processed.result.reviewed === false ? false : null,
   };
 }
 
@@ -119,6 +124,8 @@ export async function processCollectedNotices(notices, limit, {
         category: 'hardware',
         outputPath: null,
         error: null,
+        classificationSource: null,
+        reviewed: null,
       });
       updateScanProgress({ notRelevantCount: (getCount('notRelevantCount') + 1) });
       continue;
@@ -169,6 +176,12 @@ export async function processCollectedNotices(notices, limit, {
     complete,
     completionReason,
   });
+
+  try {
+    await persistFinishedScanReport({ mode, rows });
+  } catch (error) {
+    log('WARN', `Scan report was not saved: ${error.message}`);
+  }
 
   log('INFO', 'Scan completed');
   writeLogBlock(formatScanSummary({
@@ -241,6 +254,11 @@ export async function runScan(options = {}) {
       complete: false,
       completionReason: 'error',
     });
+    try {
+      await persistFinishedScanReport({ mode: 'scan', rows: [], errorMessage: error.message });
+    } catch (reportError) {
+      log('WARN', `Scan report was not saved: ${reportError.message}`);
+    }
     throw error;
   }
   const pagination = notices.pagination || null;

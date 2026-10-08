@@ -3,7 +3,7 @@ import { padCount } from '../format.js'
 import LineHoverText from './LineHoverText.jsx'
 
 const ITEMS = [
-  { id: 'all', label: 'Notices', countKey: 'all' },
+  { id: 'all', label: 'Saved notices', countKey: 'all' },
   { id: 'software', label: 'Software', countKey: 'software' },
   { id: 'review', label: 'Review', countKey: 'review' },
   { id: 'not relevant', label: 'Not Relevant', countKey: 'notRelevant' },
@@ -13,7 +13,9 @@ export default function Statistics({ counts, active, onSelect }) {
   const labels = useRef({})
 
   return (
-    <section className="statistics" aria-label="Classification totals">
+    <section className="statistics-block" aria-label="Classification totals">
+      <p className="stat-scope mono">All saved dates</p>
+      <div className="statistics">
       {ITEMS.map((item, index) => (
         <button
           key={item.id}
@@ -36,6 +38,7 @@ export default function Statistics({ counts, active, onSelect }) {
           </span>
         </button>
       ))}
+      </div>
     </section>
   )
 }

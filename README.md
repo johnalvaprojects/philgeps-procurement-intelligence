@@ -15,11 +15,21 @@
 
 ## Preview
 
-![Procurement Intelligence dashboard](docs/preview1.png)
+![Procurement Intelligence homepage](docs/preview%201.png)
 
-![Dashboard in dark mode](docs/dark%20mode%20preview.png)
+![Homepage in dark mode](docs/dark%20preview%201.png)
 
-![Featured software opportunities](docs/preview%202.png)
+![Selected software opportunities](docs/preview%202.png)
+
+![Notice list and date filter](docs/preview%203.png)
+
+![Software case detail](docs/preview%204.png)
+
+![Case review and work status](docs/preview%205.png)
+
+![Daily scan reports](docs/dark%20preview%202.png)
+
+![Printable daily scan report](docs/preview%20print.png)
 
 ---
 
@@ -54,7 +64,9 @@ Copy `.env.example` to `.env` if that file is missing. `.env` is not committed. 
 - Extracts software procurement requirements into provenance-aware JSON (items, quantities, license terms, delivery, submission, technical specs)
 - Keeps conflicting values visible instead of silently picking one (for example deadline or ABC scope conflicts)
 - Case detail page for software notices: documents, extracted requirements, financial scope, review reasons, and OCR contact candidates
-- Review page with search, classification filters, and pagination
+- Technical requirements summary for extra stored fields, with links to the original documents and the full extracted clause list kept available
+- Review page with search, classification filters, date filters, and pagination
+- Saved daily scan reports and a printable individual case report
 - Separate work status for software opportunities: new, in progress, and done, kept across later scans
 - Manual mark for software, not relevant, or keep for review
 - Dark mode and a hold-to-scan control on the main page
@@ -68,7 +80,7 @@ This tool does **not** create a quotation, choose prices, submit a bid, match co
 | Path | Role |
 |------|------|
 | `src/` | Scanner, classifier, document extraction, requirement extraction, and Express API |
-| `frontend/` | React + Vite review interface and software case detail |
+| `frontend/` | React + Vite review interface, software case detail, and printable reports |
 | `config/relevance.json` | Words used to judge software and hardware titles |
 | `tests/` | Node test runner checks |
 | `data/documents/` | Original downloaded files (local only) |

@@ -1,4 +1,4 @@
-import { displayText, formatDateDots, formatPeso, workStatusLabel } from '../format.js'
+import { displayText, formatCompactDate, formatPeso, workStatusLabel } from '../format.js'
 import { effectiveWorkStatus } from '../notices.js'
 import StatusBadge from './StatusBadge.jsx'
 
@@ -18,7 +18,7 @@ export default function OpportunityCard({ notice, onOpen, lead = false }) {
             {workStatusLabel(effectiveWorkStatus(notice))}
           </span>
         ) : null}
-        <span>{formatDateDots(notice.postedDate)}</span>
+        <span>{formatCompactDate(notice.postedDate)}</span>
       </span>
       <span className="card-title display">{displayText(notice.title)}</span>
       <span className="card-foot">

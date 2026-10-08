@@ -1,4 +1,7 @@
-import { displayText, formatPeso } from '../format.js'
+import { useState } from 'react'
+import { displayText, formatDetailDate, formatPeso } from '../format.js'
+import { buildTechnicalSummary, resolveDocumentLinks } from '../requirements/technical-summary.js'
+import { useNoticeDocuments } from '../requirements/useNoticeDocuments.js'
 
 function fieldValue(field) {
   if (field == null) return null
@@ -126,14 +129,15 @@ function ProvenanceLine({ field, noticeId }) {
   )
 }
 
-function Fact({ label, field, wide = false, children = null }) {
+function Fact({ label, field, wide = false, children = null, asDate = false }) {
   const value = fieldValue(field)
   if ((value == null || value === '') && !children) return null
+  const shown = asDate ? formatDetailDate(value) : (children || String(value))
   return (
     <div className={wide ? 'fact-wide' : undefined}>
       <dt className="mono">{label}</dt>
       <dd>
-        {children || String(value)}
+        {shown}
       </dd>
     </div>
   )
@@ -185,39 +189,43 @@ function SourceRow({ fields, noticeId }) {
   )
 }
 
-function SpecRows({ items, noticeId }) {
-  if (!Array.isArray(items) || items.length === 0) return null
-  const rows = items
-    .map((item) => ({ value: fieldValue(item), field: item }))
-    .filter((row) => row.value)
-  if (rows.length === 0) return null
+const CLAUSE_PAGE_SIZE = 40
+
+function documentStatusLabel(status) {
+  if (status === 'checking') return 'Checking availability'
+  if (status === 'unknown') return 'Availability unknown'
+  if (status === 'unavailable') return 'Unavailable'
+  return null
+}
+
+function SourceDocumentList({ noticeId, names }) {
+  const { state, files } = useNoticeDocuments(noticeId)
+  const links = resolveDocumentLinks(names, files, state)
+
+  if (links.length === 0) {
+    return <p className="state-line mono">No source documents are recorded for these requirements.</p>
+  }
 
   return (
-    <ol className="document-list req-spec-rows">
-      {rows.map((row, index) => {
-        const url = documentUrl(noticeId, row.field?.source)
+    <ol className="document-list">
+      {links.map((document, index) => {
+        const status = documentStatusLabel(document.status)
         return (
-          <li key={`spec-${index}`}>
+          <li key={`${document.name}-${index}`}>
             <span className="document-index mono">{String(index + 1).padStart(2, '0')}</span>
-            <span className="document-name">{row.value}</span>
-            {url ? (
+            <span className="document-name" title={document.name}>{document.name}</span>
+            {document.href ? (
               <a
                 className="text-link mono"
-                href={url}
+                href={document.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Open source document"
-                title={sourceFullName(row.field?.source) || undefined}
+                aria-label={`Open ${document.name}`}
               >
                 Open <span aria-hidden="true">↗</span>
               </a>
             ) : (
-              <span
-                className="mono req-spec-origin"
-                title={sourceFullName(row.field?.source) || undefined}
-              >
-                {shortSourceName(row.field?.source) || '—'}
-              </span>
+              <span className="mono req-doc-status">{status}</span>
             )}
           </li>
         )
@@ -226,29 +234,135 @@ function SpecRows({ items, noticeId }) {
   )
 }
 
-function flattenTechnical(technical) {
-  const groups = [
-    ['Required features', technical.requiredFeatures],
-    ['Minimum specifications', technical.minimumSpecifications],
-    ['Compatibility', technical.compatibilityRequirements],
-    ['Deployment', technical.deploymentRequirements],
-    ['License requirements', technical.licenseRequirements],
-    ['Support', technical.supportRequirements],
-    ['Training', technical.trainingRequirements],
-    ['Implementation', technical.implementationRequirements],
-  ]
+function ExtractedClauses({ clauses, noticeId }) {
+  const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(0)
+  const pageCount = Math.max(1, Math.ceil(clauses.length / CLAUSE_PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
+  const start = safePage * CLAUSE_PAGE_SIZE
+  const visible = clauses.slice(start, start + CLAUSE_PAGE_SIZE)
+
+  return (
+    <details
+      className="req-clauses"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="mono">View All Extracted Clauses</summary>
+      <p className="req-fallback">
+        {clauses.length} stored clause{clauses.length === 1 ? '' : 's'}. Wording and order are unchanged.
+      </p>
+      {open ? (
+        <>
+          <div className="req-clause-page">
+            <ol className="document-list" start={start + 1}>
+              {visible.map((clause, index) => {
+                const url = documentUrl(noticeId, clause.source)
+                const number = start + index + 1
+                return (
+                  <li key={`clause-${number}`}>
+                    <span className="document-index mono">{String(number).padStart(3, '0')}</span>
+                    <span className="document-name">{clause.value}</span>
+                    {url ? (
+                      <a
+                        className="text-link mono"
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Open source document"
+                        title={sourceFullName(clause.source) || undefined}
+                      >
+                        {shortSourceName(clause.source) || 'Open'} <span aria-hidden="true">↗</span>
+                      </a>
+                    ) : (
+                      <span className="mono req-doc-status" title={sourceFullName(clause.source) || undefined}>
+                        {shortSourceName(clause.source) || 'Source not recorded'}
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+          {clauses.length > CLAUSE_PAGE_SIZE ? (
+            <div className="req-clause-pager mono">
+              <button
+                type="button"
+                className="text-link"
+                disabled={safePage === 0}
+                onClick={() => setPage(safePage - 1)}
+              >
+                Previous
+              </button>
+              <span>
+                {start + 1}-{Math.min(start + CLAUSE_PAGE_SIZE, clauses.length)} of {clauses.length}
+              </span>
+              <button
+                type="button"
+                className="text-link"
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage(safePage + 1)}
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </details>
+  )
+}
+
+function summarySourceNotes(facts) {
+  const notes = []
   const seen = new Set()
-  const flat = []
-  for (const [, items] of groups) {
-    if (!Array.isArray(items)) continue
-    for (const item of items) {
-      const value = fieldValue(item)
-      if (!value || seen.has(value)) continue
-      seen.add(value)
-      flat.push(item)
-    }
+  for (const fact of facts) {
+    const key = `${fact.source || ''}|${fact.confidence || ''}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    notes.push(fact)
   }
-  return flat
+  return notes
+}
+
+function SummaryFact({ fact }) {
+  const constraint = fact.constraint === 'minimum'
+    ? 'Minimum'
+    : fact.constraint === 'maximum'
+      ? 'Maximum'
+      : null
+  return (
+    <div>
+      <dt className="mono">{fact.label}</dt>
+      <dd>
+        <span className="req-duration">
+          <span>{fact.value}</span>
+          {constraint ? <span className="req-constraint mono">{constraint}</span> : null}
+        </span>
+      </dd>
+    </div>
+  )
+}
+
+function SummarySourceNotes({ facts }) {
+  const notes = summarySourceNotes(facts)
+  if (notes.length === 0) return null
+  return (
+    <p className="req-summary-meta">
+      {notes.map((fact, index) => {
+        const name = fact.sourceLabel || 'Source not recorded'
+        const full = fact.source && fact.source !== 'philgeps-structured'
+          ? sourceFullName(fact.source)
+          : name
+        const confidence = fact.confidence ? `, ${fact.confidence} confidence` : ''
+        return (
+          <span key={`${fact.source || 'none'}-${fact.confidence || 'none'}-${index}`} title={full}>
+            {index > 0 ? ' / ' : ''}
+            {name}{confidence}
+          </span>
+        )
+      })}
+    </p>
+  )
 }
 
 function FinancialBlock({ financial, noticeId }) {
@@ -318,8 +432,10 @@ function ConflictBlock({ conflict, noticeId }) {
       <dl className="facts req-conflict-facts">
         {values.map((entry, index) => {
           const raw = fieldValue(entry)
+          if (raw == null || raw === '') return null
           const isMoney = conflict.field === 'financial.abc'
-          const display = isMoney ? moneyDisplay(raw) : raw
+          const isDeadline = conflict.field === 'submission.quotationDeadline'
+          const display = isMoney ? moneyDisplay(raw) : (isDeadline ? formatDetailDate(raw) : raw)
           if (display == null || display === '') return null
           const sideLabel = scopeLabel(entry)
             || (entry?.source === 'philgeps-structured' ? 'PhilGEPS' : 'RFQ document')
@@ -373,7 +489,6 @@ export default function ProcurementRequirements({ requirements, noticeId }) {
   }
 
   const items = Array.isArray(requirements.items) ? requirements.items : []
-  const technical = requirements.technical || {}
   const delivery = requirements.delivery || {}
   const submission = requirements.submission || {}
   const financial = requirements.financial || {}
@@ -383,7 +498,7 @@ export default function ProcurementRequirements({ requirements, noticeId }) {
   const emailCandidates = Array.isArray(submission.contactEmailCandidates)
     ? submission.contactEmailCandidates
     : []
-  const techRows = flattenTechnical(technical)
+  const technicalSummary = buildTechnicalSummary(requirements)
   const reviewMessages = conflictSummary(conflicts, emailCandidates)
   const needsReviewUi = requirements.extractionStatus === 'needs_review'
     || conflicts.length > 0
@@ -437,12 +552,30 @@ export default function ProcurementRequirements({ requirements, noticeId }) {
       )}
 
       <div className="req-item">
-        <h3 className="mono">Technical Specifications</h3>
-        {techRows.length === 0 ? (
-          <p className="state-line mono">No technical specifications extracted.</p>
+        <h3 className="mono">Technical Requirements Summary</h3>
+        <p className="req-verify">Automatically extracted. Verify against source documents.</p>
+        {technicalSummary.facts.length === 0 ? (
+          <p className="req-fallback">No additional technical fields were extracted. Review the original source documents.</p>
         ) : (
-          <SpecRows items={techRows} noticeId={noticeId} />
+          <>
+            <dl className="req-summary-grid">
+              {technicalSummary.facts.map((fact, index) => (
+                <SummaryFact fact={fact} key={`${fact.label}-${index}`} />
+              ))}
+            </dl>
+            <SummarySourceNotes facts={technicalSummary.facts} />
+          </>
         )}
+        <p className="req-fallback">
+          {technicalSummary.clauseCount > 0
+            ? 'Extracted clauses are not shown as confirmed features, compatibility, deployment, or support. Open the full list or the source documents to review them.'
+            : 'No technical clauses were extracted.'}
+        </p>
+        <h3 className="mono">Original source documents</h3>
+        <SourceDocumentList noticeId={noticeId} names={technicalSummary.documents} />
+        {technicalSummary.clauseCount > 0 ? (
+          <ExtractedClauses clauses={technicalSummary.clauses} noticeId={noticeId} />
+        ) : null}
       </div>
 
       <div className="req-item">
@@ -461,7 +594,7 @@ export default function ProcurementRequirements({ requirements, noticeId }) {
       <div className="req-item">
         <h3 className="mono">Submission</h3>
         <dl className="facts">
-          <Fact label="Deadline" field={submission.quotationDeadline} />
+          <Fact label="Deadline" field={submission.quotationDeadline} asDate />
           <Fact label="Submission method" field={submission.submissionMethod} />
           <Fact label="Contact person" field={submission.contactPerson} />
           <Fact label="Email" field={submission.contactEmail} />

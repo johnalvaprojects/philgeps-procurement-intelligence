@@ -1,7 +1,7 @@
 import {
   classificationKind,
   displayText,
-  formatDateDots,
+  formatCompactDate,
   formatPeso,
   workStatusLabel,
 } from '../format.js'
@@ -47,12 +47,12 @@ export default function OpportunityList({ notices, state, onOpen }) {
                     <span className="entry-meta-sep" aria-hidden="true">·</span>
                     <span className="entry-date">
                       <span className="entry-date-key">Pub</span>{' '}
-                      {formatDateDots(notice.postedDate)}
+                      {formatCompactDate(notice.postedDate)}
                     </span>
                     <span className="entry-meta-sep" aria-hidden="true">·</span>
                     <span className="entry-date">
                       <span className="entry-date-key">Close</span>{' '}
-                      {formatDateDots(notice.deadline)}
+                      {formatCompactDate(notice.deadline)}
                     </span>
                   </span>
                 </span>

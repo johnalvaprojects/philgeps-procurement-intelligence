@@ -91,5 +91,5 @@ test('frontend validateScanRange covers valid, same-day, inverted, and incomplet
   assert.equal(validateScanRange('2026-09-28', '').ok, false);
   assert.equal(validateScanRange('', '2026-09-30').ok, false);
   assert.equal(validateScanRange('2026-02-31', '2026-03-01').ok, false);
-  assert.equal(formatScanRangeLabel('2026-09-28', '2026-09-30'), 'SEP 28 — SEP 30');
+  assert.equal(formatScanRangeLabel('2026-09-28', '2026-09-30'), '09/28/2026 — 09/30/2026');
 });

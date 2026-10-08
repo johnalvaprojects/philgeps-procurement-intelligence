@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test, { describe } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +24,7 @@ function startApp(run) {
   const app = express();
   app.use(express.json());
   app.set('runScan', run);
+  app.set('scanReportsDir', path.join(tmpdir(), 'philgeps-scan-api-tests'));
   app.use('/api/scan', scanRoutes);
   return new Promise((resolve) => {
     const server = app.listen(0, '127.0.0.1', () => resolve(server));

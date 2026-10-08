@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { DATE_SOURCE_ISO, formatCompactDate } from '../format.js'
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -22,11 +23,7 @@ function toIsoDay(date) {
 }
 
 function displayDay(value) {
-  const date = parseIsoDay(value)
-  if (!date) return '————.——.——'
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  return `${day}.${month}.${date.getFullYear()}`
+  return formatCompactDate(value, DATE_SOURCE_ISO)
 }
 
 function sameDay(left, right) {

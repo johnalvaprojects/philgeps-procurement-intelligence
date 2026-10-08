@@ -9,6 +9,7 @@ import NoticeFilters from './components/NoticeFilters.jsx'
 import OpportunityList from './components/OpportunityList.jsx'
 import OpportunityPager from './components/OpportunityPager.jsx'
 import Statistics from './components/Statistics.jsx'
+import ScanReports from './reports/ScanReports.jsx'
 import { padCount } from './format.js'
 import {
   countClassifications,
@@ -48,6 +49,7 @@ export default function App() {
   const [activeScanRange, setActiveScanRange] = useState(null)
   const [selected, setSelected] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [showReports, setShowReports] = useState(false)
   const wasScanning = useRef(false)
   const originElement = useRef(null)
 
@@ -268,6 +270,7 @@ export default function App() {
   }
 
   function showOpportunities(filter, { scrollTo = 'list' } = {}) {
+    setShowReports(false)
     if (filter) updateClassification(filter)
     if (scrollTo === 'featured') scrollToFeatured()
     else scrollToOpportunities()
@@ -325,7 +328,7 @@ export default function App() {
 
   return (
     <>
-      <div className={selected ? 'site is-receded' : 'site'} aria-hidden={selected ? 'true' : undefined}>
+      <div className={`${selected ? 'site is-receded' : 'site'}${showReports ? ' is-reports' : ''}`} aria-hidden={selected ? 'true' : undefined}>
         <div className="page-sheet" id="top">
         <Header
           online={online}
@@ -335,8 +338,13 @@ export default function App() {
             : ''}
           onShowOpportunities={() => showOpportunities()}
           onShowSoftware={() => showOpportunities('software')}
+          onShowReports={() => setShowReports(true)}
         />
         <main>
+          {showReports ? (
+            <ScanReports onClose={() => setShowReports(false)} />
+          ) : (
+          <>
           <Hero
             total={counts.software}
             state={noticesState}
@@ -397,10 +405,12 @@ export default function App() {
               />
             ) : null}
           </section>
-          <div className="footer-reveal-sentinel" aria-hidden="true" />
+          </>
+          )}
+          {showReports ? null : <div className="footer-reveal-sentinel" aria-hidden="true" />}
         </main>
         </div>
-        <Footer />
+        {showReports ? null : <Footer />}
       </div>
 
       {selected ? (

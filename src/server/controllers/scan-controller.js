@@ -2,6 +2,7 @@ import { log } from "../../log.js";
 import { runScan } from "../../scan.js";
 import { parseScanRangeBody } from "../../scan-range.js";
 import { getScanProgress, resetScanProgress } from "../../scan-progress.js";
+import { persistFinishedScanReport } from "../../scan-reports.js";
 
 let running = false;
 let finished = Promise.resolve();
@@ -11,12 +12,12 @@ export function activeScan() {
   return finished;
 }
 
-export function beginApiScan(run) {
+export function beginApiScan(run, { reportsDir } = {}) {
   if (running) return false;
   running = true;
   finished = Promise.resolve()
     .then(() => run())
-    .catch((error) => {
+    .catch(async (error) => {
       log("ERROR", error.message);
       const progress = getScanProgress();
       resetScanProgress({
@@ -26,6 +27,16 @@ export function beginApiScan(run) {
         completionReason: progress.completionReason || "error",
         startedAt: progress.startedAt,
       });
+      try {
+        await persistFinishedScanReport({
+          mode: "scan",
+          rows: [],
+          errorMessage: error.message,
+          directory: reportsDir,
+        });
+      } catch (reportError) {
+        log("WARN", `Scan report was not saved: ${reportError.message}`);
+      }
     })
     .finally(() => {
       running = false;
@@ -47,7 +58,7 @@ export function startScan(req, res) {
   }
 
   const options = parsed.window ? { window: parsed.window } : {};
-  if (!beginApiScan(() => run(options))) {
+  if (!beginApiScan(() => run(options), { reportsDir: req.app.get("scanReportsDir") || undefined })) {
     return res.status(409).json({ error: "A scan is already running" });
   }
 
