@@ -13,6 +13,38 @@
 
 **Author:** [John Solomon M. Alvarez](https://github.com/johnalvaprojects)
 
+## Status
+
+V1 and V2 Phase 2 are implemented. Phase 3, legacy PhilGEPS at `notices.philgeps.gov.ph`, is planned and not built. See [docs/TESTING-AND-LIMITATIONS.md](docs/TESTING-AND-LIMITATIONS.md).
+
+## Business problem
+
+Public Small Value Procurement notices are published as web pages and attachments. A person looking for software licenses has to open each notice, skip hardware and services, and read bidding documents by hand. This project collects those public notices locally, separates likely software opportunities, and keeps the original documents next to the extracted fields so a reviewer can check the source before preparing a quotation.
+
+The tool does not submit a bid, choose a price, or contact the agency.
+
+## How it works
+
+1. The React app asks the Express API to scan a publication-date window. The default window is today and the previous three publish days in Asia/Manila.
+2. The scanner reads public PhilGEPS open-tender pages, keeps Small Value Procurement rows in that window, and skips notices it has already classified.
+3. New notices are classified from the title, then from PhilGEPS fields, then from downloaded PDF, DOCX, or XLSX text. Scanned PDFs can use OCR.
+4. Software notices get a requirements file. Saved packets update the homepage. Each finished scan writes one daily scan report.
+
+The full path is in [docs/AUTOMATION-WORKFLOW.md](docs/AUTOMATION-WORKFLOW.md).
+
+## Documentation
+
+| Question | Read |
+|----------|------|
+| What problem this solves and why it was designed this way | [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) |
+| How the current modules, files, and counts fit together | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| What happens after Scan PhilGEPS, or after a direct CLI run | [docs/AUTOMATION-WORKFLOW.md](docs/AUTOMATION-WORKFLOW.md) |
+| How to install, call the API, and troubleshoot | [docs/API-AND-SETUP.md](docs/API-AND-SETUP.md) |
+| What tests cover, and what is not implemented | [docs/TESTING-AND-LIMITATIONS.md](docs/TESTING-AND-LIMITATIONS.md) |
+| What V2 changed, and what Phase 3 would be | [docs/V2_IMPLEMENTATION_PLAN.md](docs/V2_IMPLEMENTATION_PLAN.md) |
+
+`docs/PROJECT_DOCUMENTATION.md` is the design narrative. The four technical references describe the current implementation. Phase 3 in the plan is not built. If a detail disagrees with the code, those four references and the source are the current behavior. Sections marked **Superseded** in the older document are kept as history.
+
 ## Preview
 
 ![Procurement Intelligence homepage](docs/preview%201.png)
@@ -79,12 +111,18 @@ This tool does **not** create a quotation, choose prices, submit a bid, match co
 
 | Path | Role |
 |------|------|
-| `src/` | Scanner, classifier, document extraction, requirement extraction, and Express API |
-| `frontend/` | React + Vite review interface, software case detail, and printable reports |
-| `config/relevance.json` | Words used to judge software and hardware titles |
-| `tests/` | Node test runner checks |
-| `data/documents/` | Original downloaded files (local only) |
-| `data/output/` | Saved notice JSON, extracted text, requirements JSON (local only) |
+| `src/philgeps/` | Public notice search, notice page parsing, and document download |
+| `src/classification/` | Title and document classification, and the skip / reuse / process plan |
+| `src/extraction/` | PDF, DOCX, XLSX text, OCR, and software requirement JSON |
+| `src/server/` | Express API used by the React app |
+| `src/scan.js` | Date-window scan and per-notice reuse or processing |
+| `src/scan-reports.js` | Immutable daily scan report files |
+| `frontend/` | React + Vite review interface, case page, and printable reports |
+| `config/relevance.json` | Terms used to judge software and non-software titles |
+| `tests/` | Node.js test runner checks |
+| `data/documents/` | Original downloaded files (local only, not committed) |
+| `data/output/` | Saved notice JSON, extracted text, requirements, and scan reports (local only) |
+| `docs/` | Technical documentation and README screenshots |
 
 ---
 

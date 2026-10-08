@@ -8,6 +8,8 @@
 
 > This document describes **what the system does today**. Optional future ideas are isolated in Section 21 and are **not** implemented.
 
+> **How to read this file.** This is the design narrative: objectives, progressive evidence, Review, provenance, and safety choices. Current routes, counts, setup, and the scan sequence are in [ARCHITECTURE.md](ARCHITECTURE.md), [AUTOMATION-WORKFLOW.md](AUTOMATION-WORKFLOW.md), [API-AND-SETUP.md](API-AND-SETUP.md), and [TESTING-AND-LIMITATIONS.md](TESTING-AND-LIMITATIONS.md). Sections marked **Superseded** describe an earlier checkpoint and are kept for context. Where they disagree with those four files or the source, the newer reference and the code are the current behavior. Phase 3 is not implemented.
+
 ---
 
 ### 1. Executive Summary
@@ -77,6 +79,8 @@ Human verification of software cases remains a designed step, not a temporary ga
 ---
 
 ### 4. High-Level Workflow
+
+> **Superseded for window scans.** The diagram below follows `processNotice` and shows a clear not-relevant title being saved. A date-window scan (`POST /api/scan` or `--scan`) runs `noticeScanPlan` first. A title `skip` there is counted and is not written to `data/output`. `processNotice` saves that packet only when it is called directly (`node src/index.js <id>`). The diagram also shows a final classification after text extraction. `saveResult` keeps the relevance chosen before the full download. Combined text is stored for the packet and for requirements. See [AUTOMATION-WORKFLOW.md](AUTOMATION-WORKFLOW.md).
 
 ```mermaid
 flowchart TD
@@ -213,6 +217,8 @@ node src/index.js --extract-requirements <noticeId>
 - Record **conflicts** instead of silently overwriting.
 - Keep incomplete technical fragments out of the clean spec list; do not invent specs when none exist.
 
+> **Partly superseded.** The extractor can still store contract sentences in technical clause arrays. The case page no longer presents that array as the specification summary. See the Technical Requirements Summary in [TESTING-AND-LIMITATIONS.md](TESTING-AND-LIMITATIONS.md).
+
 #### Major schema areas
 
 | Area | Contents (conceptual) |
@@ -253,6 +259,8 @@ PhilGEPS control numbers and document RFQ numbers are **not** auto-treated as th
 **Primary UI:** React app (`frontend/`), case detail in `NoticeDetails.jsx` + `ProcurementRequirements.jsx`.
 
 #### Case detail (software notices)
+
+> **Superseded display.** The case page no longer shows one flat technical specifications list. It shows a short summary of extra stored fields and keeps the full clause text in a collapsed archive. Daily scan reports and printable case reports exist now and are described in [AUTOMATION-WORKFLOW.md](AUTOMATION-WORKFLOW.md).
 
 Typical sections:
 
@@ -405,6 +413,8 @@ philgeps-automation/
 
 Frontend Vite dev server proxies `/api` to `http://localhost:3000`.
 
+> **Superseded route list.** This table omits `GET /api/scan/reports` and `GET /api/scan/reports/:id`. The current route list is in [API-AND-SETUP.md](API-AND-SETUP.md) and [ARCHITECTURE.md](ARCHITECTURE.md). The diagram in Section 10 also predates `scan-reports.js`.
+
 ---
 
 ### 14. CLI / Running the Automation
@@ -467,7 +477,7 @@ npm run build        # production build to frontend/dist
 npm test             # node --test (full suite)
 ```
 
-Verified while preparing this document: **233 passed, 0 failed**. Frontend `npm run build` succeeded.
+> **Historical checkpoint.** When this file was first written, `npm test` reported 233 passed and 0 failed, and the frontend production build succeeded. That count is not the current suite size. Run `npm test` for the present result. What the suite covers is listed in [TESTING-AND-LIMITATIONS.md](TESTING-AND-LIMITATIONS.md).
 
 ---
 
@@ -501,7 +511,7 @@ No production credentials are required for public PhilGEPS browsing in the curre
 
 - Runner: Node built-in `node --test`
 - Coverage includes classification, OCR/PDF lifecycle, scan API, notice filters, spreadsheet safety, and **software requirement extraction** regressions (duration constraints, conflicts, incomplete tech fragments, multi-item cases, OCR email candidates, etc.)
-- **Verified result for this documentation:** `233` tests passed, `0` failed; frontend production build succeeded
+- **Historical result for this documentation:** `233` tests passed, `0` failed, and the frontend production build succeeded, when this file was first written. That count is not the current suite size.
 
 #### Real-world software validation cases (local data)
 
@@ -567,6 +577,8 @@ Operators should treat local `data/` as working procurement files and protect th
 
 ### 20. Current Project Status
 
+> **Superseded status.** This checkpoint is before V2 Phase 1 (month-first dates) and V2 Phase 2 (printable reports and the technical requirements summary). Those phases are implemented. Phase 3, legacy PhilGEPS, is planned and not built. See [V2_IMPLEMENTATION_PLAN.md](V2_IMPLEMENTATION_PLAN.md) and [TESTING-AND-LIMITATIONS.md](TESTING-AND-LIMITATIONS.md).
+
 #### Stable (this checkpoint)
 
 - SVP scanning and notice processing
@@ -577,7 +589,7 @@ Operators should treat local `data/` as working procurement files and protect th
 - Conflict detection and OCR candidate handling
 - React review UI and case-detail requirements panel
 - Manual classification and work-status tracking
-- Automated test suite (233 passing at documentation time)
+- Automated test suite (233 passing when this checkpoint was written; not the current count)
 
 #### Human review required
 
