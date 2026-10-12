@@ -1,0 +1,44 @@
+{
+  "identification": {
+    "procurementTitle": {
+      "value": "CY2026 Procurement of Architectural Design for RAED Division under PMED-ICT",
+      "source": "philgeps-structured"
+    }
+  },
+  "items": [
+    {
+      "description": {
+        "value": "Autodesk Civil 3D Latest Edition",
+        "source": "1791165479_RFQ_09_067_26_Autodesk_Civil_3D_PMED_ICT.pdf"
+      },
+      "quantity": {
+        "value": 2,
+        "source": "1791165479_RFQ_09_067_26_Autodesk_Civil_3D_PMED_ICT.pdf"
+      },
+      "unitOfMeasure": {
+        "value": "Unit",
+        "source": "1791165479_RFQ_09_067_26_Autodesk_Civil_3D_PMED_ICT.pdf"
+      },
+      "licenseType": {
+        "value": "Subscription",
+        "source": "philgeps-structured"
+      },
+      "subscriptionDuration": {
+        "value": "at least 1-year subscription",
+        "constraint": "minimum",
+        "source": "philgeps-structured"
+      }
+    }
+  ],
+  "technical": {
+    "requiredFeatures": [
+      {
+        "value": "Genuine Software from autodesk.com, with Admin Login from Autodesk and at least 1-year subscription",
+        "source": "1791165479_RFQ_09_067_26_Autodesk_Civil_3D_PMED_ICT.pdf"
+      }
+    ]
+  },
+  "sourceDocuments": [
+    "1791165479_RFQ_09_067_26_Autodesk_Civil_3D_PMED_ICT.pdf"
+  ]
+}

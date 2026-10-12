@@ -164,6 +164,30 @@ export async function listScanReports(directory = SCAN_REPORTS_DIR) {
   return reports;
 }
 
+/**
+ * Read-time copy. The stored snapshot is not modified.
+ * Matching rows were software at scan time. currentClassification comes from the saved packet.
+ */
+export function attachCurrentClassifications(report, packets = new Map()) {
+  if (!report || typeof report !== 'object') return report;
+  const softwareOpportunities = (Array.isArray(report.softwareOpportunities) ? report.softwareOpportunities : []).map((row) => {
+    if (!row || typeof row !== 'object') return row;
+    const id = row.referenceNumber ? String(row.referenceNumber) : '';
+    const packet = id && packets.has(id) ? packets.get(id) : null;
+    const packetFound = Boolean(packet && typeof packet === 'object');
+    const current = packetFound && packet.classification != null && String(packet.classification).trim() !== ''
+      ? String(packet.classification).trim()
+      : null;
+    return {
+      ...row,
+      scanClassification: 'software',
+      currentClassification: current,
+      packetFound,
+    };
+  });
+  return { ...report, softwareOpportunities };
+}
+
 export async function readScanReport(id, directory = SCAN_REPORTS_DIR) {
   if (!isSafeReportId(id)) return null;
   const filePath = path.join(directory, `${id}.json`);

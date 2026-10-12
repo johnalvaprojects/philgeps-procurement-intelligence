@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "description": { "value": "Stored item description" },
+      "quantity": { "value": 1 },
+      "unitOfMeasure": { "value": "unit" }
+    }
+  ],
+  "technical": {
+    "cloudOrOnPremise": { "value": "cloud-based", "source": "deployment-source.pdf" }
+  },
+  "sourceDocuments": ["deployment-source.pdf"]
+}

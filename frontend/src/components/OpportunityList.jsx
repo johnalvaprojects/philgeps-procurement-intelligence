@@ -12,7 +12,7 @@ function statusKind(classification) {
   return classificationKind(classification).replaceAll(' ', '-')
 }
 
-export default function OpportunityList({ notices, state, onOpen }) {
+export default function OpportunityList({ notices, state, onOpen, showStatus = true }) {
   if (state === 'loading') return <p className="state-line mono">Loading notices...</p>
   if (state === 'error') return <p className="state-line mono">Unable to load notices.</p>
   if (notices.length === 0) return <p className="state-line mono">No notices found.</p>
@@ -21,7 +21,7 @@ export default function OpportunityList({ notices, state, onOpen }) {
     <div className="list">
       <div className="list-legend mono" aria-hidden="true">
         <span>Ref / Title / Meta</span>
-        <span>ABC / Status</span>
+        <span>{showStatus ? 'ABC / Status' : 'ABC'}</span>
       </div>
       <ul className="list-body">
         {notices.map((notice) => {
@@ -61,14 +61,16 @@ export default function OpportunityList({ notices, state, onOpen }) {
                     <span className="entry-abc-label mono">ABC</span>
                     <span className="entry-abc-value display">{formatPeso(notice.abc)}</span>
                   </span>
-                  <span className="entry-status">
-                    <StatusBadge classification={notice.classification} />
-                    {notice.classification === 'software' ? (
-                      <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
-                        {workStatusLabel(effectiveWorkStatus(notice))}
-                      </span>
-                    ) : null}
-                  </span>
+                  {showStatus ? (
+                    <span className="entry-status">
+                      <StatusBadge classification={notice.classification} />
+                      {notice.classification === 'software' ? (
+                        <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
+                          {workStatusLabel(effectiveWorkStatus(notice))}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                   <span className="entry-arrow" aria-hidden="true">→</span>
                 </span>
               </button>

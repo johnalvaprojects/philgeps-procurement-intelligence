@@ -9,6 +9,9 @@ import NoticeFilters from './components/NoticeFilters.jsx'
 import OpportunityList from './components/OpportunityList.jsx'
 import OpportunityPager from './components/OpportunityPager.jsx'
 import Statistics from './components/Statistics.jsx'
+import Awards from '../../archive/merchant-awards/frontend/Awards.jsx'
+import MerchantDesk from '../../archive/merchant-awards/frontend/MerchantDesk.jsx'
+import { featureEnabled } from '../../config/features.js'
 import ScanReports from './reports/ScanReports.jsx'
 import { padCount } from './format.js'
 import {
@@ -20,18 +23,36 @@ import {
 } from './notices.js'
 import { formatScanRangeLabel, validateScanRange } from './scan-range.js'
 import { prefersReducedMotion } from './useReducedMotion.js'
+import { apiFetch, setCsrfToken } from './api.js'
 import './App.css'
 
 const EMPTY_COUNTS = { all: 0, software: 0, review: 0, notRelevant: 0 }
 const FEATURED_LIMIT = 5
 const DEFAULT_PAGE_SIZE = 25
+const awardsEnabled = featureEnabled('awards')
+const merchantEnabled = featureEnabled('merchant')
+
+function archivedDirectView(view) {
+  if (view === 'awards' && !awardsEnabled) return true
+  if (view === 'merchant' && !merchantEnabled) return true
+  return false
+}
+
+function openSection(view, staff) {
+  if (archivedDirectView(view)) return 'notices'
+  if (awardsEnabled && view === 'awards') return 'awards'
+  if (merchantEnabled && staff && view === 'merchant') return 'merchant'
+  if (staff && view === 'weekly') return 'reports'
+  return 'notices'
+}
 
 function plainRect(rect) {
   if (!rect) return null
   return { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
 }
 
-export default function App() {
+export default function App({ role = 'staff', fullAccess = false, onSignedOut }) {
+  const staff = role === 'staff' || fullAccess
   const [online, setOnline] = useState(null)
   const [notices, setNotices] = useState([])
   const [noticesState, setNoticesState] = useState('loading')
@@ -49,14 +70,14 @@ export default function App() {
   const [activeScanRange, setActiveScanRange] = useState(null)
   const [selected, setSelected] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [showReports, setShowReports] = useState(false)
+  const [section, setSection] = useState(() => openSection(new URLSearchParams(window.location.search).get('view'), staff))
   const wasScanning = useRef(false)
   const originElement = useRef(null)
 
   const loadNotices = useCallback(async () => {
     setNoticesState('loading')
     try {
-      const response = await fetch('/api/notices')
+      const response = await apiFetch('/api/notices')
       if (!response.ok) throw new Error('Unable to load notices')
       const body = await response.json()
       setNotices(Array.isArray(body) ? body : [])
@@ -69,7 +90,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
 
-    fetch('/api/status')
+    apiFetch('/api/status')
       .then((response) => {
         if (!response.ok) throw new Error('Backend status request failed')
         return response.json()
@@ -89,7 +110,9 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
 
-    fetch('/api/scan/status')
+    if (!staff) return undefined
+
+    apiFetch('/api/scan/status')
       .then((response) => {
         if (!response.ok) throw new Error('Scan status request failed')
         return response.json()
@@ -106,11 +129,21 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [staff])
 
   useEffect(() => {
     loadNotices()
   }, [loadNotices])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const view = params.get('view')
+    if (!archivedDirectView(view)) return
+    params.delete('view')
+    const query = params.toString()
+    const next = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+    window.history.replaceState(null, '', next)
+  }, [])
 
   useEffect(() => {
     if (!scanning) return undefined
@@ -118,7 +151,7 @@ export default function App() {
 
     const timer = setInterval(async () => {
       try {
-        const response = await fetch('/api/scan/status')
+        const response = await apiFetch('/api/scan/status')
         if (!response.ok) return
         const body = await response.json()
         if (stopped) return
@@ -166,7 +199,7 @@ export default function App() {
       const headers = validation.payload
         ? { 'Content-Type': 'application/json' }
         : undefined
-      const response = await fetch('/api/scan', {
+      const response = await apiFetch('/api/scan', {
         method: 'POST',
         headers,
         body: validation.payload ? JSON.stringify(validation.payload) : undefined,
@@ -270,7 +303,7 @@ export default function App() {
   }
 
   function showOpportunities(filter, { scrollTo = 'list' } = {}) {
-    setShowReports(false)
+    setSection('notices')
     if (filter) updateClassification(filter)
     if (scrollTo === 'featured') scrollToFeatured()
     else scrollToOpportunities()
@@ -305,6 +338,16 @@ export default function App() {
     'not relevant': counts.notRelevant,
   }[classification] ?? counts.software
 
+  async function signOut() {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // The local session still ends if the server is unreachable.
+    }
+    setCsrfToken(null)
+    onSignedOut?.()
+  }
+
   function scrollToOpportunities() {
     document.getElementById('opportunities')?.scrollIntoView({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
@@ -328,7 +371,7 @@ export default function App() {
 
   return (
     <>
-      <div className={`${selected ? 'site is-receded' : 'site'}${showReports ? ' is-reports' : ''}`} aria-hidden={selected ? 'true' : undefined}>
+      <div className={`${selected ? 'site is-receded' : 'site'}${section === 'reports' ? ' is-reports' : ''}${section === 'awards' ? ' is-awards' : ''}${section === 'merchant' && staff ? ' is-merchant' : ''}`} aria-hidden={selected ? 'true' : undefined}>
         <div className="page-sheet" id="top">
         <Header
           online={online}
@@ -337,16 +380,23 @@ export default function App() {
             ? formatScanRangeLabel(activeScanRange.from, activeScanRange.to)
             : ''}
           onShowOpportunities={() => showOpportunities()}
-          onShowSoftware={() => showOpportunities('software')}
-          onShowReports={() => setShowReports(true)}
+          onShowSoftware={staff ? () => showOpportunities('software') : null}
+          onShowAwards={awardsEnabled ? () => setSection('awards') : null}
+          onShowMerchant={merchantEnabled && staff ? () => setSection('merchant') : null}
+          onShowReports={staff ? () => setSection('reports') : null}
+          onSignOut={signOut}
         />
         <main>
-          {showReports ? (
-            <ScanReports onClose={() => setShowReports(false)} />
+          {section === 'reports' && staff ? (
+            <ScanReports onClose={() => setSection('notices')} />
+          ) : awardsEnabled && section === 'awards' ? (
+            <Awards staff={staff} />
+          ) : merchantEnabled && section === 'merchant' && staff ? (
+            <MerchantDesk />
           ) : (
           <>
           <Hero
-            total={counts.software}
+            total={staff ? counts.software : counts.all}
             state={noticesState}
             scanning={scanning}
             scanError={scanError}
@@ -356,20 +406,26 @@ export default function App() {
             onScanToChange={setScanTo}
             onClearScanRange={clearScanRange}
             onScan={startScan}
+            showScan={staff}
+            lede={staff
+              ? undefined
+              : 'Public procurement notices saved from PhilGEPS. Sign in to scan, review, and open reports.'}
           />
-          <Statistics
-            counts={counts}
-            active={classification}
-            onSelect={(filter) => showOpportunities(filter, { scrollTo: 'featured' })}
-          />
-          <FeaturedOpportunities
+          {staff ? (
+            <Statistics
+              counts={counts}
+              active={classification}
+              onSelect={(filter) => showOpportunities(filter, { scrollTo: 'featured' })}
+            />
+          ) : null}
+          {staff ? <FeaturedOpportunities
             notices={featured}
             total={featuredTotal}
             state={noticesState}
             category={classification}
             onOpen={openNotice}
             onViewAll={() => showOpportunities(classification)}
-          />
+          /> : null}
           <section id="opportunities" className="opportunities" aria-labelledby="opportunities-title">
             <div className="section-rule opportunities-rule">
               <h2 id="opportunities-title" className="opportunities-heading">
@@ -392,8 +448,14 @@ export default function App() {
               onPublishedFromChange={updatePublishedFrom}
               onPublishedToChange={updatePublishedTo}
               onClearPublishedDates={clearPublishedDates}
+              showClassification={staff}
             />
-            <OpportunityList notices={pageNotices} state={noticesState} onOpen={openNotice} />
+            <OpportunityList
+              notices={pageNotices}
+              state={noticesState}
+              onOpen={openNotice}
+              showStatus={staff}
+            />
             {noticesState === 'ready' ? (
               <OpportunityPager
                 page={currentPage}
@@ -407,10 +469,10 @@ export default function App() {
           </section>
           </>
           )}
-          {showReports ? null : <div className="footer-reveal-sentinel" aria-hidden="true" />}
+          {section === 'reports' && staff || section === 'awards' || (section === 'merchant' && staff) ? null : <div className="footer-reveal-sentinel" aria-hidden="true" />}
         </main>
         </div>
-        {showReports ? null : <Footer />}
+        {section === 'reports' && staff || section === 'awards' || (section === 'merchant' && staff) ? null : <Footer />}
       </div>
 
       {selected ? (
@@ -426,6 +488,7 @@ export default function App() {
             noticeId={selected.id}
             onBack={requestClose}
             onClassified={applyClassification}
+            staff={staff}
           />
         </ExpandingPanel>
       ) : null}

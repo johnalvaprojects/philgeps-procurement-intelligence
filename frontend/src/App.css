@@ -29,7 +29,9 @@
   pointer-events: none;
 }
 
-.site.is-reports {
+.site.is-reports,
+.site.is-awards,
+.site.is-merchant {
   --page-end: 2rem;
 }
 
@@ -148,11 +150,13 @@
 
 .masthead-nav {
   display: flex;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.5rem;
 }
 
 .nav-link {
   box-sizing: border-box;
+  white-space: nowrap;
   padding: 0.15rem 0.4rem;
   border: 1px solid transparent;
   transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
@@ -2257,6 +2261,30 @@
 
 .colophon-micro p {
   margin: 0;
+}
+
+.site.is-merchant .colophon {
+  margin-top: 2rem;
+  padding-top: 1.15rem;
+}
+
+.site.is-merchant .colophon-info {
+  gap: 1rem 1.5rem;
+}
+
+.site.is-merchant .colophon-col {
+  gap: 0.4rem;
+}
+
+.site.is-merchant .colophon-rule {
+  margin-top: 0.8rem;
+}
+
+.site.is-merchant .colophon-mark {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4.5vw, 2.8rem);
+  line-height: 0.9;
+  letter-spacing: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {

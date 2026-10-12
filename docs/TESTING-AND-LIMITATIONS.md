@@ -45,7 +45,9 @@ Tests use fixtures and stubs. They do not download live PhilGEPS notices and the
 | `tests/ocr-worker.test.js` | OCR page limits and timeouts |
 | `tests/docx.test.js`, `tests/xlsx.test.js` | Those extractors |
 | `tests/software-requirements.test.js` | Requirement fields and provenance |
-| `tests/technical-summary.test.js` | Summary uses stored extra fields only, keeps clause text out of the summary, case report matches |
+| `tests/technical-summary.test.js` | Summary uses stored extra fields only, keeps clause text out of the summary, case report matches. Inputs are `tests/fixtures/technical-summary/`, not `data/output/` |
+| `tests/auth.test.js` | Guest and staff sessions, including local guest full access |
+| `tests/weekly-report.test.js` | Weekly report totals from saved scan reports |
 | `tests/improvements.test.js`, `tests/oct6-regression.test.js` | Regression cases from earlier fixes |
 
 A passing suite means these checks passed on the machine that ran them. It does not mean every live PhilGEPS notice will classify correctly.

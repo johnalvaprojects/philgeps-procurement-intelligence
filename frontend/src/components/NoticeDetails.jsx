@@ -6,8 +6,11 @@ import ClassificationControls from './ClassificationControls.jsx'
 import NoticeDocuments from './NoticeDocuments.jsx'
 import ProcurementRequirements from './ProcurementRequirements.jsx'
 import StatusBadge from './StatusBadge.jsx'
+import AwardPanel from '../../../archive/merchant-awards/frontend/AwardPanel.jsx'
+import { featureEnabled } from '../../../config/features.js'
 import WorkStatusControls from './WorkStatusControls.jsx'
 import { effectiveWorkStatus } from '../notices.js'
+import { apiFetch } from '../api.js'
 
 function textValue(value) {
   const text = value == null ? '' : String(value).trim()
@@ -30,7 +33,7 @@ function secondaryFacts(packet) {
   return fields.filter(([, value]) => value)
 }
 
-export default function NoticeDetails({ noticeId, onBack, onClassified }) {
+export default function NoticeDetails({ noticeId, onBack, onClassified, staff = true }) {
   const [packet, setPacket] = useState(null)
   const [state, setState] = useState('loading')
   const [saving, setSaving] = useState(false)
@@ -45,7 +48,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
     setPacket(null)
     setSaveError('')
 
-    fetch(`/api/notices/${encodeURIComponent(noticeId)}`)
+    apiFetch(`/api/notices/${encodeURIComponent(noticeId)}`)
       .then((response) => {
         if (!response.ok) throw new Error('Unable to load notice details')
         return response.json()
@@ -69,7 +72,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
     setSaving(true)
     setSaveError('')
     try {
-      const response = await fetch(`/api/notices/${encodeURIComponent(noticeId)}/classification`, {
+      const response = await apiFetch(`/api/notices/${encodeURIComponent(noticeId)}/classification`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ classification: value }),
@@ -98,7 +101,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
     setSavingWork(true)
     setWorkError('')
     try {
-      const response = await fetch(`/api/notices/${encodeURIComponent(noticeId)}/work-status`, {
+      const response = await apiFetch(`/api/notices/${encodeURIComponent(noticeId)}/work-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workStatus: value }),
@@ -129,7 +132,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
           </button>
           <p className="mono dossier-case">Case / {displayText(noticeId)}</p>
         </div>
-        {packet ? (
+        {staff && packet ? (
           <div className="dossier-bar-end">
             <button type="button" className="back-link mono" onClick={() => setPrinting(true)}>
               Print / Save PDF
@@ -176,14 +179,24 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
                   <dt className="mono">Closing</dt>
                   <dd>{formatLongDate(notice.deadline)}</dd>
                 </div>
-                <div>
-                  <dt className="mono">Source</dt>
-                  <dd>{sourceLabel(packet.classificationSource)}</dd>
-                </div>
-                <div>
-                  <dt className="mono">Review</dt>
-                  <dd>{reviewStatusLabel(packet)}</dd>
-                </div>
+                {notice.procurementMode ? (
+                  <div>
+                    <dt className="mono">Mode</dt>
+                    <dd>{displayText(notice.procurementMode)}</dd>
+                  </div>
+                ) : null}
+                {staff ? (
+                  <div>
+                    <dt className="mono">Source</dt>
+                    <dd>{sourceLabel(packet.classificationSource)}</dd>
+                  </div>
+                ) : null}
+                {staff ? (
+                  <div>
+                    <dt className="mono">Review</dt>
+                    <dd>{reviewStatusLabel(packet)}</dd>
+                  </div>
+                ) : null}
                 {extra.map(([label, value]) => (
                   <div key={label} className="fact-wide">
                     <dt className="mono">{label}</dt>
@@ -194,16 +207,16 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
             </section>
           </div>
 
-          <NoticeDocuments noticeId={noticeId} />
+          {staff ? <NoticeDocuments noticeId={noticeId} /> : null}
 
-          {packet.classification === 'software' ? (
+          {staff && packet.classification === 'software' ? (
             <ProcurementRequirements
               requirements={packet.extractedRequirements}
               noticeId={noticeId}
             />
           ) : null}
 
-          <section className="dossier-block classification" aria-labelledby="classification-title">
+          {staff ? <section className="dossier-block classification" aria-labelledby="classification-title">
             <h3 id="classification-title" className="mono">Classification</h3>
             <ClassificationControls
               current={packet.classification}
@@ -211,8 +224,8 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
               error={saveError}
               onChoose={saveClassification}
             />
-          </section>
-          {packet.classification === 'software' ? (
+          </section> : null}
+          {staff && packet.classification === 'software' ? (
             <section className="dossier-block work-status" aria-labelledby="work-status-title">
               <h3 id="work-status-title" className="mono">Work status</h3>
               <WorkStatusControls
@@ -223,9 +236,10 @@ export default function NoticeDetails({ noticeId, onBack, onClassified }) {
               />
             </section>
           ) : null}
+          {featureEnabled('awards') ? <AwardPanel noticeId={noticeId} staff={staff} /> : null}
         </>
       ) : null}
-      {printing && packet ? createPortal(
+      {staff && printing && packet ? createPortal(
         <CaseReport packet={packet} onClose={() => setPrinting(false)} />,
         document.body,
       ) : null}

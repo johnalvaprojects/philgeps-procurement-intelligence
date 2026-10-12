@@ -48,6 +48,10 @@ const INCIDENTAL_SOFTWARE = [
   /\bcalibration\s+software\b/gi,
   /\bsoftware\s+shall\s+provide\b/gi,
   /\b(?:bundled|included)\s+software\b/gi,
+  // Equipment upkeep, not a software purchase: "routine software updates",
+  // "Software / Hardware upgrade availability".
+  /\bsoftware\s+(?:updates?|upgrades?|patches?)\b/gi,
+  /\b(?:software\s*\/\s*hardware|hardware\s*\/\s*software)\s+(?:updates?|upgrades?|patches?)(?:\s+availability)?\b/gi,
 ];
 const SECURITY_PRODUCTS = [
   ['Web Application Firewall', /\bweb application firewalls?\b/i],
@@ -405,6 +409,32 @@ function itemText(text, rules) {
   const softwareInItem = itemParts.some((part) => strongSoftwareTerms(part, rules).length > 0);
   if (softwareInItem) return text;
   return itemParts.join('\n');
+}
+
+function onlyGenericSoftwareTerm(text, rules) {
+  const source = stripIncidentalSoftwareMentions(text);
+  if (hasDedicatedSoftwareProduct(source) || hasDirectSoftwarePurchaseCue(source)) return false;
+  if (licenseWithSoftwareContext(source)) return false;
+  const terms = findTerms(source, rules?.softwareTerms || []);
+  if (subscriptionWithSoftwareContext(source, terms)) return false;
+  const strong = terms.filter((term) => !WEAK_SOFTWARE_TERMS.has(term.toLowerCase()));
+  return strong.length > 0 && strong.every((term) => term.toLowerCase() === 'software');
+}
+
+/**
+ * PhilGEPS title, business category, and lot lines. A bare "software" mention
+ * in those fields is not a product, license, or subscription, so it stays
+ * inspect and the attachment workflow can still run.
+ */
+export function classifyStructuredEvidence(text, rules, noticeTitle) {
+  const result = classifyDocumentForNotice(text, rules, noticeTitle);
+  if (result?.category === 'software' && result.isRelevant === true && onlyGenericSoftwareTerm(text, rules)) {
+    return reviewResult(
+      'Structured PhilGEPS fields mention software without a software product, license, or subscription, so the attachment should be checked.',
+      ['Generic software wording in structured fields is not enough to skip attachment inspection'],
+    );
+  }
+  return result;
 }
 
 export function classifyDocumentForNotice(text, rules, noticeTitle, context = {}) {

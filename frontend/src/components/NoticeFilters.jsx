@@ -28,6 +28,7 @@ export default function NoticeFilters({
   onPublishedFromChange,
   onPublishedToChange,
   onClearPublishedDates,
+  showClassification = true,
 }) {
   const labels = useRef({})
   const dateActive = Boolean(publishedFrom || publishedTo)
@@ -47,7 +48,7 @@ export default function NoticeFilters({
         </label>
       </div>
 
-      <div className="manifest-row" role="group" aria-label="Classification filter">
+      {showClassification ? <div className="manifest-row" role="group" aria-label="Classification filter">
         <span className="manifest-key mono">Class</span>
         <div className="filter-group">
           {FILTERS.map((filter, index) => (
@@ -71,7 +72,7 @@ export default function NoticeFilters({
             </span>
           ))}
         </div>
-      </div>
+      </div> : null}
 
       <div className="manifest-row" role="group" aria-label="Published date filter">
         <span className="manifest-key mono">Date</span>
@@ -100,7 +101,7 @@ export default function NoticeFilters({
         </div>
       </div>
 
-      {active === 'software' ? (
+      {showClassification && active === 'software' ? (
         <div className="manifest-row" role="group" aria-label="Work status filter">
           <span className="manifest-key mono">Work</span>
           <div className="filter-group work-filters">

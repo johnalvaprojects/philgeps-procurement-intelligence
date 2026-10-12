@@ -3,6 +3,9 @@ node_modules/
 data/documents/**
 data/output/**
 data/logs/**
+data/auth/
+data/awards/
+data/merchant-awards/
 !data/documents/.gitkeep
 !data/output/.gitkeep
 !data/logs/.gitkeep

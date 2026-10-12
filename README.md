@@ -85,7 +85,18 @@ npm run dev
 
 The API listens on `http://localhost:3000`. The review page is the Vite app, usually `http://localhost:5173`, and it proxies `/api` to that server.
 
-Copy `.env.example` to `.env` if that file is missing. `.env` is not committed. Downloaded documents, scan logs, and saved notice files stay in `data/` and are not committed either.
+The same two processes can run in Docker. From the project root, with ports 3000 and 5173 free:
+
+```bash
+docker compose up -d
+docker compose logs -f
+```
+
+Open `http://localhost:5173`. `docker compose down` stops the containers and leaves `data/` on this computer. `npm run dev` in two terminals still works when the containers are stopped. Only one program can use each port.
+
+Copy `.env.example` to `.env` if that file is missing. `.env` is not committed. Downloaded documents, scan logs, sessions, and saved notice files stay in `data/` and are not committed either.
+
+Merchant and Awards are archived. See [ARCHIVED_FEATURES.md](ARCHIVED_FEATURES.md).
 
 ---
 
@@ -120,6 +131,9 @@ This tool does **not** create a quotation, choose prices, submit a bid, match co
 | `frontend/` | React + Vite review interface, case page, and printable reports |
 | `config/relevance.json` | Terms used to judge software and non-software titles |
 | `tests/` | Node.js test runner checks |
+| `tests/fixtures/technical-summary/` | Committed inputs for the technical summary tests |
+| `Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml` | Local Docker Compose setup for the API and Vite app |
+| `archive/merchant-awards/` | Archived Merchant and Awards code. Not mounted on the running API |
 | `data/documents/` | Original downloaded files (local only, not committed) |
 | `data/output/` | Saved notice JSON, extracted text, requirements, and scan reports (local only) |
 | `docs/` | Technical documentation and README screenshots |

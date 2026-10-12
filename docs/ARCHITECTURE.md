@@ -23,7 +23,7 @@ flowchart LR
 
 ## Frontend
 
-The interface lives in `frontend/`. Vite serves it in development, usually at `http://localhost:5173`. `frontend/vite.config.js` proxies every `/api` request to `http://localhost:3000`.
+The interface lives in `frontend/`. Vite serves it in development, usually at `http://localhost:5173`. `frontend/vite.config.js` proxies every `/api` request to `http://localhost:3000`, or to `API_PROXY_TARGET` when that variable is set. Docker Compose sets it to `http://api:3000`. `docker-compose.yml` is a local run option. The app still starts with `npm run dev`.
 
 | Area | Files | Role |
 |------|--------|------|

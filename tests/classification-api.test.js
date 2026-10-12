@@ -10,6 +10,7 @@ import express from 'express';
 import { buildNoticeMetadata, writeNoticeMetadata } from '../src/documents/metadata.js';
 import { decideSavedNotice } from '../src/review/decision.js';
 import noticeRoutes from '../src/server/routes/notice-routes.js';
+import { loginStaff, provisionStaff, staffHeaders, useAuthRoutes } from './http-auth.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -56,15 +57,19 @@ async function fixture() {
   return { directory, outputDir, documentsRoot, noticeDir };
 }
 
-function startApp(outputDir, documentsRoot) {
+async function startApp(outputDir, documentsRoot) {
   const app = express();
   app.use(express.json());
+  const account = await provisionStaff(app);
   app.set('outputDir', outputDir);
   app.set('documentsRoot', documentsRoot);
+  useAuthRoutes(app);
   app.use('/api/notices', noticeRoutes);
-  return new Promise((resolve) => {
-    const server = app.listen(0, '127.0.0.1', () => resolve(server));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
   });
+  server.auth = await loginStaff(server.address().port, account);
+  return server;
 }
 
 test('the CLI and API share decideSavedNotice for a manual classification', async () => {
@@ -74,7 +79,7 @@ test('the CLI and API share decideSavedNotice for a manual classification', asyn
     const port = server.address().port;
     const response = await fetch(`http://127.0.0.1:${port}/api/notices/87086/classification`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ classification: 'software' }),
     });
     assert.equal(response.status, 200);
@@ -112,7 +117,7 @@ test('the CLI and API share decideSavedNotice for a manual classification', asyn
 
     const notRelevant = await fetch(`http://127.0.0.1:${port}/api/notices/87086/classification`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ classification: 'not-relevant' }),
     });
     assert.equal(notRelevant.status, 200);
@@ -131,21 +136,21 @@ test('classification updates reject a missing notice, a bad value, and a bad id'
     const port = server.address().port;
     const missing = await fetch(`http://127.0.0.1:${port}/api/notices/424242/classification`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ classification: 'software' }),
     });
     assert.equal(missing.status, 404);
 
     const badValue = await fetch(`http://127.0.0.1:${port}/api/notices/87086/classification`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ classification: 'hardware' }),
     });
     assert.equal(badValue.status, 400);
 
     const badId = await fetch(`http://127.0.0.1:${port}/api/notices/not-a-notice/classification`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ classification: 'software' }),
     });
     assert.equal(badId.status, 400);

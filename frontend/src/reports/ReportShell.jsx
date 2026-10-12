@@ -25,15 +25,32 @@ export default function ReportShell({
   snapshot = false,
   onPrint,
   onClose,
+  toolbar = null,
+  layout,
+  meta = null,
   children,
 }) {
   const generatedLabel = snapshot
     ? (generatedAt ? formatManilaTimestamp(generatedAt) : 'Not recorded')
     : formatGeneratedAt(generatedAt)
+  const weekly = layout === 'weekly'
+  if (weekly) {
+    return (
+      <div className="report-root report-root-weekly">
+        <div className="report-toolbar no-print">
+          <ReportButton onClick={onClose}>Back</ReportButton>
+          {toolbar}
+          <ReportButton primary onClick={onPrint || (() => window.print())}>Print / Save PDF</ReportButton>
+        </div>
+        {children}
+      </div>
+    )
+  }
   return (
     <div className="report-root">
       <div className="report-toolbar no-print">
         <ReportButton onClick={onClose}>Back</ReportButton>
+        {toolbar}
         <ReportButton primary onClick={onPrint || (() => window.print())}>Print / Save PDF</ReportButton>
       </div>
       <article className="report-sheet">
@@ -45,6 +62,7 @@ export default function ReportShell({
             <p className="report-company">Trustera Solutions, Inc.</p>
             <h1 className="report-title">{title}</h1>
             <p className="report-generated">Generated {generatedLabel}</p>
+            {meta}
           </div>
         </header>
         {children}

@@ -77,6 +77,12 @@ Names and purposes only. Do not commit `.env`.
 | `OCR_TIMEOUT_MS` | Whole OCR run budget. Default `15000` |
 | `OCR_PAGE_TIMEOUT_MS` | Optional per-page OCR budget. Not listed in `.env.example`. If unset or invalid, the code uses `8000` or `OCR_TIMEOUT_MS`, whichever is smaller. A valid integer is used as entered |
 | `USER_AGENT` | `User-Agent` header on PhilGEPS requests. Default is a Chrome-like string in `src/philgeps/client.js` |
+| `NODE_ENV` | `production` turns off guest full access unless `GUEST_FULL_ACCESS=true`. Local `npm run dev` and Docker leave this unset |
+| `GUEST_FULL_ACCESS` | `true` or `false` forces guest access. Otherwise guests match staff only when `NODE_ENV` is not `production` |
+| `COOKIE_SECURE` | `true` or `false` forces the session cookie Secure flag. Leave unset for local HTTP |
+| `SESSION_TTL_MS` | Session length. Default 12 hours |
+| `LOGIN_MAX_ATTEMPTS` / `LOGIN_WINDOW_MS` | Staff sign-in limit. Default 5 attempts per 15 minutes |
+| `API_PROXY_TARGET` | Vite proxy target. Default `http://localhost:3000`. Docker Compose sets `http://api:3000` |
 
 ## Run the app
 
@@ -94,6 +100,25 @@ npm run dev
 ```
 
 Open the URL Vite prints, usually `http://localhost:5173`. API health check: `http://localhost:3000/api/status`.
+
+Welcome offers guest entry and staff sign-in. Locally, a guest can use the same review tools as staff. Set `NODE_ENV=production` to keep the older guest limits. Staff accounts live in `data/auth/` and are not committed.
+
+## Docker Compose
+
+Local development only. It does not replace `npm run dev`.
+
+Requires Docker Desktop. Ports 3000 and 5173 must be free. The API image is Node 22 on Debian Bookworm and includes the Linux libraries used by `@napi-rs/canvas`. OCR still uses `tesseract.js` inside Node.
+
+```bash
+docker compose up -d
+docker compose logs -f
+docker compose ps
+docker compose down
+```
+
+`api` publishes `localhost:3000`. `web` publishes `localhost:5173` and proxies `/api` to `http://api:3000`. The project folder and `./data` are bind-mounted, so scan files stay on the host. Linux `node_modules` are Docker volumes, separate from a Windows install. `docker compose down` does not delete `./data`.
+
+Stop the containers before starting `npm run dev` on the same ports.
 
 ## Tests and frontend build
 
@@ -297,7 +322,7 @@ Do not commit downloaded procurement files or generated case data.
 
 | Symptom | What to check |
 |---------|----------------|
-| Vite page has no notices | API not running, or `GET http://localhost:3000/api/status` fails. Vite only proxies `/api` |
+| Vite page has no notices | API not running, or `GET http://localhost:3000/api/status` fails. Vite only proxies `/api`. In Docker the proxy target is `http://api:3000` |
 | `409` on scan | A scan is already running. Wait for `GET /api/scan/status` to show `running: false` |
 | `400` on scan | The page checks dates before POST. One date without the other, a date that is not a real calendar day, or From after To never leaves the browser. The API returns 400 only if that body still arrives: `Both from and to are required`, `from and to must be valid YYYY-MM-DD dates`, or `from must be on or before to`. There is no maximum span. Both dates empty uses today and the three previous Asia/Manila publish days |
 | Scan stops with `complete: false` | `completionReason` is `repeated-page`, `safety-limit`, or `error`. The report lists what was collected |
@@ -309,4 +334,4 @@ Do not commit downloaded procurement files or generated case data.
 
 ## Deployment
 
-This repository does not include a Dockerfile, a process manager, or a hosted environment. `npm run build` only builds the frontend. The API still has to be started with Node, and the built frontend must be served so that `/api` reaches that API. Downloaded files stay on local disk. Treat a shared deployment as out of scope until those pieces exist.
+Docker Compose above is for local development. It is not a hosted deployment. `npm run build` only builds the frontend. Downloaded files stay on local disk under `data/`. Treat a shared public deployment as out of scope.

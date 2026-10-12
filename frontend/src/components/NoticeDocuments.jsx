@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../api.js'
 import { padCount } from '../format.js'
 
 export default function NoticeDocuments({ noticeId }) {
@@ -8,7 +9,7 @@ export default function NoticeDocuments({ noticeId }) {
   useEffect(() => {
     let cancelled = false
     setState('loading')
-    fetch(`/api/notices/${encodeURIComponent(noticeId)}/documents`)
+    apiFetch(`/api/notices/${encodeURIComponent(noticeId)}/documents`)
       .then((response) => {
         if (response.status === 404) return []
         if (!response.ok) throw new Error(`HTTP ${response.status}`)

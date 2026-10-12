@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "description": { "value": "Stored item description", "source": "clause-source.pdf" },
+      "quantity": { "value": 1, "source": "clause-source.pdf" },
+      "unitOfMeasure": { "value": "unit", "source": "clause-source.pdf" }
+    }
+  ],
+  "technical": {
+    "cloudOrOnPremise": { "value": "cloud-based", "source": "deployment-source.pdf" },
+    "requiredFeatures": [
+      {
+        "value": "The Supplier shall not subcontract the whole of the Works without consent.",
+        "source": "clause-source.pdf"
+      },
+      {
+        "value": "General Conditions of Contract",
+        "source": "clause-source.pdf"
+      },
+      {
+        "value": "dispute resolution stays in the clause list",
+        "source": "clause-source.pdf"
+      },
+      {
+        "value": "contract termination stays in the clause list",
+        "source": "clause-source.pdf"
+      }
+    ]
+  },
+  "sourceDocuments": ["deployment-source.pdf", "clause-source.pdf"]
+}

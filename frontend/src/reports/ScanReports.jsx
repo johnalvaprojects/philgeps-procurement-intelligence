@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DailyScanReport from './DailyScanReport.jsx'
+import WeeklyReport from './WeeklyReport.jsx'
 import { ReportButton } from './ReportShell.jsx'
 import { compactWindow, completionLabel, countText } from './report-format.js'
+import { apiFetch } from '../api.js'
 import './print.css'
 
 export default function ScanReports({ onClose }) {
@@ -11,10 +13,13 @@ export default function ScanReports({ onClose }) {
   const [selectedId, setSelectedId] = useState(null)
   const [report, setReport] = useState(null)
   const [reportState, setReportState] = useState('idle')
+  const [weeklyOpen, setWeeklyOpen] = useState(() => (
+    new URLSearchParams(window.location.search).get('view') === 'weekly'
+  ))
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/scan/reports')
+    apiFetch('/api/scan/reports')
       .then((response) => {
         if (!response.ok) throw new Error('Unable to load scan reports')
         return response.json()
@@ -36,7 +41,7 @@ export default function ScanReports({ onClose }) {
     if (!selectedId) return undefined
     let cancelled = false
     setReportState('loading')
-    fetch(`/api/scan/reports/${encodeURIComponent(selectedId)}`)
+    apiFetch(`/api/scan/reports/${encodeURIComponent(selectedId)}`)
       .then((response) => {
         if (!response.ok) throw new Error('Unable to load scan report')
         return response.json()
@@ -53,6 +58,13 @@ export default function ScanReports({ onClose }) {
       cancelled = true
     }
   }, [selectedId])
+
+  if (weeklyOpen) {
+    return createPortal(
+      <WeeklyReport onClose={() => setWeeklyOpen(false)} />,
+      document.body,
+    )
+  }
 
   if (selectedId) {
     if (reportState === 'loading') {
@@ -82,7 +94,10 @@ export default function ScanReports({ onClose }) {
             Reports are saved when a scan finishes. Earlier scans were not reconstructed.
           </p>
         </div>
-        <ReportButton onClick={onClose}>Back to notices</ReportButton>
+        <div className="reports-workspace-actions">
+          <ReportButton onClick={() => setWeeklyOpen(true)}>Weekly report</ReportButton>
+          <ReportButton onClick={onClose}>Back to notices</ReportButton>
+        </div>
       </header>
       {state === 'loading' ? <p className="state-line mono">Loading scan reports...</p> : null}
       {state === 'error' ? <p className="state-line mono">Unable to load scan reports.</p> : null}

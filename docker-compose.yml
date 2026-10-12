@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: "3000"
+    volumes:
+      - .:/app
+      - api_node_modules:/app/node_modules
+      - ./data:/app/data
+    command: sh -c "if [ ! -e node_modules/express ]; then npm ci; fi && exec npm run dev"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      API_PROXY_TARGET: http://api:3000
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/workspace
+      - web_node_modules:/workspace/frontend/node_modules
+    working_dir: /workspace/frontend
+    depends_on:
+      - api
+    command: sh -c "if [ ! -e node_modules/vite ]; then npm ci; fi && exec npm run dev -- --host 0.0.0.0 --port 5173"
+
+volumes:
+  api_node_modules:
+  web_node_modules:

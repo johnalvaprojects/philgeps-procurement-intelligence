@@ -1,12 +1,16 @@
 import express from "express";
+import { attachAuth, requireCsrf, requireRoles } from "../../auth/middleware.js";
 import { getScanStatus, startScan } from "../controllers/scan-controller.js";
-import { getScanReportById, getScanReports } from "../controllers/scan-report-controller.js";
+import { getScanReportById, getScanReports, getWeeklyScanReport } from "../controllers/scan-report-controller.js";
 
 const router = express.Router();
+const staff = requireRoles("staff");
 
-router.get("/status", getScanStatus);
-router.get("/reports", getScanReports);
-router.get("/reports/:id", getScanReportById);
-router.post("/", startScan);
+router.use(attachAuth);
+router.get("/status", staff, getScanStatus);
+router.get("/reports/weekly", staff, getWeeklyScanReport);
+router.get("/reports", staff, getScanReports);
+router.get("/reports/:id", staff, getScanReportById);
+router.post("/", staff, requireCsrf, startScan);
 
 export default router;

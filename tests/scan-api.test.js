@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { activeScan } from '../src/server/controllers/scan-controller.js';
 import scanRoutes from '../src/server/routes/scan-routes.js';
+import { loginStaff, provisionStaff, staffHeaders, useAuthRoutes } from './http-auth.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -20,21 +21,27 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function startApp(run) {
+const authByPort = new Map();
+
+async function startApp(run) {
   const app = express();
   app.use(express.json());
+  const account = await provisionStaff(app);
   app.set('runScan', run);
   app.set('scanReportsDir', path.join(tmpdir(), 'philgeps-scan-api-tests'));
+  useAuthRoutes(app);
   app.use('/api/scan', scanRoutes);
-  return new Promise((resolve) => {
-    const server = app.listen(0, '127.0.0.1', () => resolve(server));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
   });
+  authByPort.set(server.address().port, await loginStaff(server.address().port, account));
+  return server;
 }
 
 async function postScan(port, body) {
-  const init = { method: 'POST' };
+  const init = { method: 'POST', headers: staffHeaders(authByPort.get(port)) };
   if (body !== undefined) {
-    init.headers = { 'Content-Type': 'application/json' };
+    init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
   }
   const response = await fetch(`http://127.0.0.1:${port}/api/scan`, init);
@@ -42,7 +49,9 @@ async function postScan(port, body) {
 }
 
 async function getStatus(port) {
-  const response = await fetch(`http://127.0.0.1:${port}/api/scan/status`);
+  const response = await fetch(`http://127.0.0.1:${port}/api/scan/status`, {
+    headers: { cookie: authByPort.get(port).cookie },
+  });
   return { status: response.status, body: await response.json() };
 }
 

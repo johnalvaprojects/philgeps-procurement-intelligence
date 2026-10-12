@@ -13,6 +13,7 @@ import { parseNoticeId } from './philgeps/notices.js';
 import { log, startScanLog } from './log.js';
 import { processCollectedNotices, runScan, writeReviewList } from './scan.js';
 import { extractAndSaveSoftwareRequirements } from './extraction/extract-software-requirements.js';
+import { runCreateStaff } from './auth/create-staff.js';
 
 useProjectRoot();
 
@@ -93,7 +94,21 @@ async function markNoticeReviewed(input) {
 
 const args = process.argv.slice(2);
 
-if (args[0] === '--reviewed') {
+if (args[0] === '--create-staff') {
+  if (args.length > 1) {
+    log('ERROR', 'Create the staff account from the prompts. Do not pass the username or password as arguments.');
+    process.exitCode = 1;
+  } else {
+    runCreateStaff()
+      .then((account) => {
+        log('INFO', `Staff account created for ${account.username}`);
+      })
+      .catch((error) => {
+        log('ERROR', error.message);
+        process.exitCode = 1;
+      });
+  }
+} else if (args[0] === '--reviewed') {
   if (!args[1]) {
     log('ERROR', 'Give the notice number to mark as reviewed. Example: node src/index.js --reviewed 85876');
     process.exitCode = 1;
@@ -195,6 +210,7 @@ if (args[0] === '--reviewed') {
     });
 } else {
   console.error('Usage: node src/index.js <notice number or URL>');
+  console.error('       node src/index.js --create-staff');
   console.error('       node src/index.js --scan');
   console.error('       node src/index.js --reclassify');
   console.error('       node src/index.js --reclassify-title [--dry-run]');

@@ -13,6 +13,7 @@ import {
   setSavedWorkStatus,
 } from '../src/review/work-status.js';
 import noticeRoutes from '../src/server/routes/notice-routes.js';
+import { loginStaff, provisionStaff, staffHeaders, useAuthRoutes } from './http-auth.js';
 
 const softwareRelevance = {
   isRelevant: true,
@@ -63,15 +64,19 @@ async function fixture(body = packet()) {
   return { directory, outputDir, documentsRoot };
 }
 
-function startApp(outputDir, documentsRoot) {
+async function startApp(outputDir, documentsRoot) {
   const app = express();
   app.use(express.json());
+  const account = await provisionStaff(app);
   app.set('outputDir', outputDir);
   app.set('documentsRoot', documentsRoot);
+  useAuthRoutes(app);
   app.use('/api/notices', noticeRoutes);
-  return new Promise((resolve) => {
-    const server = app.listen(0, '127.0.0.1', () => resolve(server));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
   });
+  server.auth = await loginStaff(server.address().port, account);
+  return server;
 }
 
 test('a newly classified software opportunity defaults to work status new', () => {
@@ -135,7 +140,7 @@ test('work status can be changed and rejects invalid or missing notices', async 
     const port = server.address().port;
     const changed = await fetch(`http://127.0.0.1:${port}/api/notices/87086/work-status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ workStatus: 'done' }),
     });
     assert.equal(changed.status, 200);
@@ -153,7 +158,7 @@ test('work status can be changed and rejects invalid or missing notices', async 
 
     const invalid = await fetch(`http://127.0.0.1:${port}/api/notices/87086/work-status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ workStatus: 'archived' }),
     });
     assert.equal(invalid.status, 400);
@@ -162,7 +167,7 @@ test('work status can be changed and rejects invalid or missing notices', async 
 
     const missing = await fetch(`http://127.0.0.1:${port}/api/notices/424242/work-status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: staffHeaders(server.auth, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ workStatus: 'new' }),
     });
     assert.equal(missing.status, 404);

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { classifyDocumentForNotice, classifyText, downloadDecision, inspectionDecision, shouldDownloadAll } from './classification/relevance.js';
+import { classifyDocumentForNotice, classifyStructuredEvidence, classifyText, downloadDecision, inspectionDecision, shouldDownloadAll } from './classification/relevance.js';
 import { extractDocumentText } from './extraction/extract.js';
 import { extractAndSaveSoftwareRequirements } from './extraction/extract-software-requirements.js';
 import { buildRequirements, procurementPortion, toProcurementDocument } from './extraction/requirements.js';
@@ -47,6 +47,80 @@ function savedManual(noticeId) {
   return saved;
 }
 
+/**
+ * Title, then PhilGEPS structured fields. Attachment inspection runs only when
+ * this stays on inspect. Generic "software" in lot lines does not count as a
+ * software download.
+ */
+export function preAttachmentDecision(notice, rules) {
+  const title = notice?.title || '';
+  const titleRelevance = classifyText(title, rules);
+  const titleDecision = downloadDecision(titleRelevance);
+  if (titleDecision === 'skip') {
+    return {
+      phase: 'title-skip',
+      decision: 'skip',
+      relevance: titleRelevance,
+      titleRelevance,
+      structuredRelevance: null,
+      reachesAttachmentInspection: false,
+    };
+  }
+  if (titleDecision === 'download') {
+    return {
+      phase: 'title-download',
+      decision: 'download',
+      relevance: titleRelevance,
+      titleRelevance,
+      structuredRelevance: null,
+      reachesAttachmentInspection: false,
+    };
+  }
+
+  const structuredText = structuredEvidenceText(notice || {});
+  if (!structuredText.trim()) {
+    return {
+      phase: 'inspect',
+      decision: 'inspect',
+      relevance: titleRelevance,
+      titleRelevance,
+      structuredRelevance: null,
+      reachesAttachmentInspection: true,
+    };
+  }
+
+  const structuredRelevance = classifyStructuredEvidence(structuredText, rules, title);
+  const structuredDecision = downloadDecision(structuredRelevance);
+  if (structuredDecision === 'skip') {
+    return {
+      phase: 'structured-skip',
+      decision: 'skip',
+      relevance: structuredRelevance,
+      titleRelevance,
+      structuredRelevance,
+      reachesAttachmentInspection: false,
+    };
+  }
+  if (structuredDecision === 'download') {
+    return {
+      phase: 'structured-download',
+      decision: 'download',
+      relevance: structuredRelevance,
+      titleRelevance,
+      structuredRelevance,
+      reachesAttachmentInspection: false,
+    };
+  }
+  return {
+    phase: 'inspect',
+    decision: 'inspect',
+    relevance: structuredRelevance,
+    titleRelevance,
+    structuredRelevance,
+    reachesAttachmentInspection: true,
+  };
+}
+
 export async function processNotice(input) {
   const noticeId = parseNoticeId(input);
   const url = noticeUrl(noticeId);
@@ -60,12 +134,12 @@ export async function processNotice(input) {
   }
 
   const rules = JSON.parse(readFileSync(path.join(root, 'config', 'relevance.json'), 'utf8'));
-  const titleRelevance = classifyText(parsed.notice.title || '', rules);
-  logRelevanceNotes(titleRelevance);
-  let relevance = titleRelevance;
-  let decision = downloadDecision(titleRelevance);
+  const plan = preAttachmentDecision(parsed.notice, rules);
+  logRelevanceNotes(plan.titleRelevance);
+  let relevance = plan.relevance;
+  let decision = plan.decision;
 
-  if (decision === 'skip') {
+  if (plan.phase === 'title-skip') {
     log('INFO', 'Classification: hardware');
     log('INFO', 'Skipped without downloading attachments');
     log('INFO', `Skipped notice ${noticeId}. The title is hardware, so documents were not downloaded.`);
@@ -80,36 +154,28 @@ export async function processNotice(input) {
     });
   }
 
-  // Cheap structured PhilGEPS fields before attachment download / OCR.
-  if (decision === 'inspect') {
-    const structuredText = structuredEvidenceText(parsed.notice);
-    if (structuredText.trim()) {
-      const structuredRelevance = classifyDocumentForNotice(structuredText, rules, parsed.notice.title || '');
-      log('INFO', 'Checked PhilGEPS structured detail fields before attachments');
-      logRelevanceNotes(structuredRelevance);
-      const structuredDecision = downloadDecision(structuredRelevance);
-      if (structuredDecision === 'skip') {
-        await discardNoticeDownloads(noticeId);
-        log('INFO', 'Classification: hardware');
-        log('INFO', 'Skipped without downloading attachments');
-        log('INFO', `Skipped notice ${noticeId}. Structured PhilGEPS fields show a non-software purchase.`);
-        return saveResult({
-          noticeId,
-          notice: parsed.notice,
-          documents: [],
-          relevance: structuredRelevance,
-          text: '',
-          documentName: null,
-        });
-      }
-      if (structuredDecision === 'download') {
-        relevance = structuredRelevance;
-        decision = 'download';
-        log('INFO', `Notice ${noticeId} looks like software from PhilGEPS structured fields.`);
-      } else {
-        relevance = structuredRelevance;
-      }
-    }
+  if (plan.structuredRelevance) {
+    log('INFO', 'Checked PhilGEPS structured detail fields before attachments');
+    logRelevanceNotes(plan.structuredRelevance);
+  }
+
+  if (plan.phase === 'structured-skip') {
+    await discardNoticeDownloads(noticeId);
+    log('INFO', 'Classification: hardware');
+    log('INFO', 'Skipped without downloading attachments');
+    log('INFO', `Skipped notice ${noticeId}. Structured PhilGEPS fields show a non-software purchase.`);
+    return saveResult({
+      noticeId,
+      notice: parsed.notice,
+      documents: [],
+      relevance,
+      text: '',
+      documentName: null,
+    });
+  }
+
+  if (plan.phase === 'structured-download') {
+    log('INFO', `Notice ${noticeId} looks like software from PhilGEPS structured fields.`);
   }
 
   const links = await loadDocumentLinks(parsed, url);

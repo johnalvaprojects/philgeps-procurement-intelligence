@@ -4,14 +4,25 @@ import { projectRoot } from "../../project-root.js";
 import { readSavedSoftwareRequirements } from "../../extraction/extract-software-requirements.js";
 import { decideSavedNotice } from "../../review/decision.js";
 import { publicWorkStatus, setSavedWorkStatus } from "../../review/work-status.js";
+import { publicNoticeFields } from "../../auth/public-notice.js";
+import { requestHasGuestFullAccess } from "../../auth/access.js";
 
 const OUTPUT_DIR = path.join(projectRoot, "data", "output");
 const DOCUMENTS_DIR = path.join(projectRoot, "data", "documents");
 
+function outputDirectory(req) {
+  return req.app.get("outputDir") || OUTPUT_DIR;
+}
+
+function documentsDirectory(req) {
+  return req.app.get("documentsRoot") || DOCUMENTS_DIR;
+}
+
 // Get all saved notices
 export async function getNotices(req, res, next) {
   try {
-    const files = await fs.readdir(OUTPUT_DIR);
+    const directory = outputDirectory(req);
+    const files = await fs.readdir(directory);
 
     const noticeFiles = files.filter(
       (file) => file.endsWith(".json") && /^\d+\.json$/.test(file)
@@ -19,9 +30,11 @@ export async function getNotices(req, res, next) {
 
     const notices = await Promise.all(
       noticeFiles.map(async (file) => {
-        const filePath = path.join(OUTPUT_DIR, file);
+        const filePath = path.join(directory, file);
         const content = await fs.readFile(filePath, "utf8");
         const data = JSON.parse(content);
+
+        if (req.auth?.role === "guest" && !requestHasGuestFullAccess(req)) return publicNoticeFields(data);
 
         return {
           referenceNumber: data.notice?.referenceNumber,
@@ -49,11 +62,16 @@ export async function getNoticeById(req, res, next) {
   try {
     const { id } = req.params;
 
-    const filePath = path.join(OUTPUT_DIR, `${id}.json`);
+    const directory = outputDirectory(req);
+    const filePath = path.join(directory, `${id}.json`);
 
     const content = await fs.readFile(filePath, "utf8");
     const notice = JSON.parse(content);
-    const extractedRequirements = await readSavedSoftwareRequirements(id, { outputDir: OUTPUT_DIR });
+    if (req.auth?.role === "guest" && !requestHasGuestFullAccess(req)) {
+      res.json({ notice: publicNoticeFields(notice) });
+      return;
+    }
+    const extractedRequirements = await readSavedSoftwareRequirements(id, { outputDir: directory });
     if (extractedRequirements) {
       notice.extractedRequirements = extractedRequirements;
     }
@@ -75,7 +93,7 @@ export async function getNoticeDocuments(req, res, next) {
   try {
     const { id } = req.params;
 
-    const documentsDir = path.join(projectRoot, "data", "documents", id);
+    const documentsDir = path.join(documentsDirectory(req), id);
 
     const files = (await fs.readdir(documentsDir)).filter(
       (filename) => filename !== "metadata.json"
@@ -103,7 +121,7 @@ export async function getNoticeDocument(req, res, next) {
   try {
     const { id, filename } = req.params;
 
-    const documentsDir = path.join(projectRoot, "data", "documents", id);
+    const documentsDir = path.join(documentsDirectory(req), id);
     const filePath = path.resolve(documentsDir, filename);
 
     // Prevent accessing files outside the notice's document folder
@@ -130,8 +148,8 @@ export async function getNoticeDocument(req, res, next) {
 export async function updateNoticeClassification(req, res, next) {
   try {
     const updated = await decideSavedNotice(req.params.id, req.body?.classification, {
-      outputDir: req.app.get("outputDir") || OUTPUT_DIR,
-      documentsRoot: req.app.get("documentsRoot") || DOCUMENTS_DIR,
+      outputDir: outputDirectory(req),
+      documentsRoot: documentsDirectory(req),
     });
     res.json({
       referenceNumber: updated.notice?.referenceNumber,
@@ -157,8 +175,8 @@ export async function updateNoticeClassification(req, res, next) {
 export async function updateNoticeWorkStatus(req, res, next) {
   try {
     const updated = await setSavedWorkStatus(req.params.id, req.body?.workStatus, {
-      outputDir: req.app.get("outputDir") || OUTPUT_DIR,
-      documentsRoot: req.app.get("documentsRoot") || DOCUMENTS_DIR,
+      outputDir: outputDirectory(req),
+      documentsRoot: documentsDirectory(req),
     });
     res.json({
       referenceNumber: updated.notice?.referenceNumber,

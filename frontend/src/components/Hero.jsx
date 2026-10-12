@@ -15,6 +15,8 @@ export default function Hero({
   onScanToChange,
   onClearScanRange,
   onScan,
+  showScan = true,
+  lede = 'Software opportunities automatically identified from public PhilGEPS Small Value Procurement notices.',
 }) {
   const [phase, setPhase] = useState('idle')
   const [focused, setFocused] = useState(false)
@@ -119,11 +121,8 @@ export default function Hero({
           <br />
           Opportunities.
         </h1>
-        <p className="hero-lede">
-          Software opportunities automatically identified from public PhilGEPS
-          Small Value Procurement notices.
-        </p>
-        <div className="hero-actions">
+        <p className="hero-lede">{lede}</p>
+        {showScan ? <div className="hero-actions">
           <div
             className={rangeActive ? 'scan-panel is-custom' : 'scan-panel'}
             role="group"
@@ -215,7 +214,7 @@ export default function Hero({
             Press and hold to start the scan. Releasing early cancels it.
           </p>
           {scanError ? <p className="hero-error mono">{scanError}</p> : null}
-        </div>
+        </div> : null}
       </div>
     </section>
   )

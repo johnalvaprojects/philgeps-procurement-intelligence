@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../api.js'
 
 export function useNoticeDocuments(noticeId) {
   const [state, setState] = useState(noticeId ? 'loading' : 'unavailable')
@@ -13,7 +14,7 @@ export function useNoticeDocuments(noticeId) {
 
     let cancelled = false
     setState('loading')
-    fetch(`/api/notices/${encodeURIComponent(noticeId)}/documents`)
+    apiFetch(`/api/notices/${encodeURIComponent(noticeId)}/documents`)
       .then((response) => {
         if (response.status === 404) return []
         if (!response.ok) throw new Error(`HTTP ${response.status}`)

@@ -5,10 +5,13 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   classifyDocumentForNotice,
+  classifyStructuredEvidence,
   classifyText,
   downloadDecision,
   inspectionDecision,
 } from '../src/classification/relevance.js';
+import { structuredEvidenceText } from '../src/philgeps/notices.js';
+import { preAttachmentDecision } from '../src/process-notice.js';
 import { applyAutomaticClassification, reclassifyNotice } from '../src/reclassify.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -175,4 +178,132 @@ test('reclassify updates automatic records and leaves manual records untouched',
 
   const applied = applyAutomaticClassification(automatic, classifyText(automatic.notice.title, rules));
   assert.equal(applied.classification, 'not relevant');
+});
+
+const bloodBankNotice = {
+  title: 'PROCUREMENT OF BLOOD BANK EQUIPMENT',
+  businessCategory: 'Patient exam and monitoring products',
+  lineItems: [
+    {
+      lotName: 'BRANDNEW ELECTRONIC / AUTOMATED BLOOD BAG HAND STRIPPER',
+      lotDescription: 'BRANDNEW ELECTRONIC / AUTOMATED BLOOD BAG HAND STRIPPER',
+      quantity: '2',
+      unitOfMeasure: 'UNIT',
+    },
+    {
+      lotName: 'BRANDNEW PLASMA THAW BATH (PLASMA THAWER',
+      lotDescription: 'BRANDNEW PLASMA THAW BATH (PLASMA THAWER',
+      quantity: '1',
+      unitOfMeasure: 'PIECE',
+    },
+    {
+      lotName: 'Routine software updates should be provided',
+      lotDescription: 'Routine software updates should be provided',
+    },
+    {
+      lotName: 'Software / Hardware upgrade availability',
+      lotDescription: 'Software / Hardware upgrade availability',
+    },
+  ],
+};
+
+test('notice 96036 equipment-maintenance software wording is not a software purchase', () => {
+  const title = classifyText(bloodBankNotice.title, rules);
+  assert.equal(downloadDecision(title), 'inspect');
+  assert.notEqual(title.category, 'software');
+
+  const structured = classifyStructuredEvidence(
+    structuredEvidenceText(bloodBankNotice),
+    rules,
+    bloodBankNotice.title,
+  );
+  assert.notEqual(structured.category, 'software');
+  assert.equal(structured.isRelevant, false);
+  assert.notEqual(structured.confidence, 0.9);
+  assert.equal(downloadDecision(structured), 'inspect');
+
+  const rfq = [
+    'PROCUREMENT OF BLOOD BANK EQUIPMENT',
+    'medical equipment',
+    '2 electronic/automated blood bag hand strippers',
+    '1 plasma thaw bath',
+    'Software / Hardware',
+    'upgrade availability',
+    'Routine software updates should be provided',
+  ].join('\n');
+  const document = classifyDocumentForNotice(rfq, rules, bloodBankNotice.title);
+  assert.equal(document.isRelevant, false);
+  assert.equal(document.needsReview, false);
+  assert.notEqual(document.category, 'software');
+  assert.equal(inspectionDecision(document), 'skip');
+  assert.match(document.notes.join(' '), /medical or imaging equipment/);
+});
+
+test('notice 96036 reaches attachment inspection instead of a structured software download', () => {
+  const plan = preAttachmentDecision(bloodBankNotice, rules);
+  assert.equal(plan.phase, 'inspect');
+  assert.equal(plan.decision, 'inspect');
+  assert.equal(plan.reachesAttachmentInspection, true);
+  assert.notEqual(plan.relevance.category, 'software');
+  assert.equal(plan.relevance.isRelevant, false);
+});
+
+test('a generic software mention in a structured lot does not skip attachment inspection', () => {
+  const notice = {
+    title: 'Supply and Delivery of IT Solution',
+    lineItems: [{ lotName: 'The unit includes software', lotDescription: 'The unit includes software' }],
+  };
+  const structured = classifyStructuredEvidence(structuredEvidenceText(notice), rules, notice.title);
+  assert.notEqual(structured.category, 'software');
+  assert.equal(structured.isRelevant, false);
+  assert.equal(structured.needsReview, true);
+  assert.notEqual(structured.confidence, 0.9);
+  assert.equal(downloadDecision(structured), 'inspect');
+
+  const plan = preAttachmentDecision(notice, rules);
+  assert.equal(plan.reachesAttachmentInspection, true);
+  assert.equal(plan.decision, 'inspect');
+});
+
+test('named software products, licenses, and subscriptions still download', () => {
+  for (const title of [
+    'Supply and Delivery of Mapping Software',
+    'Procurement of Software Licenses for Office Productivity',
+    'Procurement of Microsoft 365 Software Subscription for One Year',
+    'IT Helpdesk Software Subscription',
+    'Procurement of Software Maintenance',
+  ]) {
+    const result = classifyText(title, rules);
+    assert.equal(result.category, 'software', title);
+    assert.equal(result.isRelevant, true, title);
+    assert.equal(downloadDecision(result), 'download', title);
+  }
+
+  const fromLots = {
+    title: 'Supply and Delivery of IT Solution',
+    lineItems: [{
+      lotName: 'Adobe Acrobat software license',
+      lotDescription: 'Adobe Acrobat software license',
+    }],
+  };
+  const structured = classifyStructuredEvidence(structuredEvidenceText(fromLots), rules, fromLots.title);
+  assert.equal(structured.category, 'software');
+  assert.equal(structured.isRelevant, true);
+  assert.equal(downloadDecision(structured), 'download');
+  const plan = preAttachmentDecision(fromLots, rules);
+  assert.equal(plan.phase, 'structured-download');
+  assert.equal(plan.reachesAttachmentInspection, false);
+});
+
+test('consulting mixed with a software license purchase stays Review', () => {
+  const title = 'Hiring of Third Party Service Provider for Market Research and Procurement of Microsoft 365 Software Licenses';
+  const result = classifyText(title, rules);
+  assert.equal(result.needsReview, true);
+  assert.equal(result.isRelevant, false);
+  assert.notEqual(result.category, 'software');
+  assert.equal(downloadDecision(result), 'inspect');
+
+  const plan = preAttachmentDecision({ title, lineItems: [] }, rules);
+  assert.equal(plan.reachesAttachmentInspection, true);
+  assert.notEqual(plan.relevance.category, 'software');
 });

@@ -1,0 +1,157 @@
+.welcome-status {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #111111;
+  font-family: "IBM Plex Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.welcome {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 4.5rem 1.5rem;
+  background: #ffffff;
+  color: #111111;
+}
+
+.welcome-card {
+  width: min(100%, 22.5rem);
+}
+
+.welcome-kicker,
+.welcome-label,
+.welcome-guest,
+.welcome-submit,
+.welcome-note,
+.welcome-error {
+  font-family: "IBM Plex Mono", Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.welcome-kicker {
+  margin: 0 0 1.5rem;
+  text-align: center;
+  font-size: 0.72rem;
+}
+
+.welcome-title {
+  margin: 0;
+  text-align: center;
+  font-family: Anton, "Arial Narrow", Impact, sans-serif;
+  font-weight: 400;
+  font-size: clamp(4.5rem, 12vw, 5.5rem);
+  line-height: 0.85;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.welcome-lede {
+  margin: 1.25rem 0 2rem;
+  text-align: center;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.welcome-guest,
+.welcome-submit,
+.welcome-input {
+  width: 100%;
+  border: 2px solid #111111;
+  border-radius: 0;
+}
+
+.welcome-guest,
+.welcome-submit {
+  padding: 0.9rem 1rem;
+  font-size: 0.75rem;
+  background: #ffffff;
+  color: #111111;
+  transition:
+    background-color 280ms ease,
+    color 280ms ease,
+    border-color 280ms ease;
+}
+
+.welcome-guest:hover:not(:disabled),
+.welcome-guest:focus-visible:not(:disabled) {
+  background: #111111;
+  color: #ffffff;
+}
+
+.welcome-submit:hover:not(:disabled),
+.welcome-submit:focus-visible:not(:disabled) {
+  background: #ffffff;
+  color: #111111;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-guest,
+  .welcome-submit {
+    transition: none;
+  }
+}
+
+.welcome-guest:disabled,
+.welcome-submit:disabled {
+  opacity: 0.55;
+}
+
+.welcome-rule {
+  margin: 1.75rem 0;
+  border: 0;
+  border-top: 1px solid #111111;
+}
+
+.welcome-label {
+  display: block;
+  margin: 0 0 0.45rem;
+  font-size: 0.68rem;
+}
+
+.welcome-input {
+  display: block;
+  margin: 0 0 1.15rem;
+  padding: 0.75rem 0.8rem;
+  background: #ffffff;
+  color: #111111;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.welcome-input:focus,
+.welcome-input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+.welcome-error {
+  margin: 0 0 1rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0.03em;
+}
+
+.welcome-submit {
+  margin-top: 0.35rem;
+  background: #111111;
+  color: #ffffff;
+}
+
+.welcome-note {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}

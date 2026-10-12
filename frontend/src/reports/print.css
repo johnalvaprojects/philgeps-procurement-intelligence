@@ -20,11 +20,25 @@
   z-index: 3;
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.75rem;
   max-width: 190mm;
   margin: 0 auto 1rem;
   padding: 1.25rem 0 0.85rem;
   background: #ffffff;
+}
+
+.report-week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-right: auto;
+}
+
+.reports-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .report-button {
@@ -69,9 +83,9 @@
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #111111;
-  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 0.25mm solid #141414;
+  margin-bottom: 1.1rem;
 }
 
 .report-logo-frame {
@@ -93,16 +107,16 @@
   margin: 0;
   font-family: "IBM Plex Mono", Consolas, monospace;
   font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .report-title {
-  margin: 0.2rem 0 0;
-  font-family: Anton, "Arial Narrow", Impact, sans-serif;
-  font-size: 1.8rem;
-  font-weight: 400;
-  letter-spacing: 0.02em;
+  margin: 0.35rem 0 0;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
   line-height: 1.05;
   overflow-wrap: anywhere;
 }
@@ -122,12 +136,12 @@
 
 .report-section h2 {
   margin: 0 0 0.55rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--report-line);
+  padding-bottom: 0.28rem;
+  border-bottom: 0.25mm solid #141414;
   font-family: "IBM Plex Mono", Consolas, monospace;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -199,8 +213,9 @@
 
 .report-table th,
 .report-table td {
-  border: 1px solid var(--report-line);
-  padding: 0.4rem 0.45rem;
+  border: 0;
+  border-bottom: 0.15mm solid #d0d0d0;
+  padding: 0.42rem 0.45rem 0.42rem 0;
   vertical-align: top;
   text-align: left;
   overflow-wrap: break-word;
@@ -208,15 +223,16 @@
   hyphens: none;
   font-size: 0.82rem;
   line-height: 1.35;
+  background: transparent;
 }
 
 .report-table th {
+  border-bottom: 0.35mm solid #141414;
   font-family: "IBM Plex Mono", Consolas, monospace;
   font-size: 0.68rem;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: #f3f3f3;
   white-space: nowrap;
 }
 
@@ -305,12 +321,12 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 1.6rem;
   padding-top: 0.45rem;
-  border-top: 1px solid #111111;
+  border-top: 0.25mm solid #141414;
   font-family: "IBM Plex Mono", Consolas, monospace;
   font-size: 0.68rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
 }
 
 .reports-workspace {
@@ -371,6 +387,18 @@
   @page {
     size: A4 portrait;
     margin: 14mm 12mm 16mm;
+    @bottom-left {
+      content: "Trustera Solutions, Inc.";
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: 8pt;
+      color: #111111;
+    }
+    @bottom-right {
+      content: counter(page, decimal-leading-zero);
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: 8pt;
+      color: #111111;
+    }
   }
 
   body {
@@ -397,17 +425,11 @@
   .report-sheet {
     max-width: none;
     margin: 0;
-    padding: 0 0 12mm;
+    padding: 0;
   }
 
-  .report-footer {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    margin: 0;
-    padding-top: 2mm;
-    background: #ffffff;
+  .report-root:not(.report-root-weekly) .report-footer {
+    display: none;
   }
 
   .report-logo {
@@ -513,14 +535,3 @@
   }
 }
 
-@media print {
-  .report-table-software,
-  .report-table-errors {
-    min-width: 0;
-  }
-
-  .report-sheet {
-    overflow: visible;
-    max-width: none;
-  }
-}

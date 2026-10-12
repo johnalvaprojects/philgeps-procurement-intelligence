@@ -5,7 +5,7 @@ let logFile = null;
 
 export function redactSecrets(message) {
   return String(message ?? '')
-    .replace(/(cookie|password|token|authorization)\s*[:=]\s*\S+/gi, '$1=[redacted]');
+    .replace(/(cookie|password|token|authorization|csrf)\s*[:=]\s*\S+/gi, '$1=[redacted]');
 }
 
 export function startScanLog(now = new Date(), directory = path.join('data', 'logs')) {
