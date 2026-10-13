@@ -16,6 +16,11 @@ export default function ScanReports({ onClose }) {
   const [weeklyOpen, setWeeklyOpen] = useState(() => (
     new URLSearchParams(window.location.search).get('view') === 'weekly'
   ))
+  const [portal, setPortal] = useState('all')
+  const visibleReports = reports.filter((item) => {
+    if (portal === 'all') return true
+    return (item.source || 'current') === portal
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -101,13 +106,36 @@ export default function ScanReports({ onClose }) {
       </header>
       {state === 'loading' ? <p className="state-line mono">Loading scan reports...</p> : null}
       {state === 'error' ? <p className="state-line mono">Unable to load scan reports.</p> : null}
+      {state === 'ready' ? (
+        <div className="filter-group" role="group" aria-label="Portal filter">
+          {[
+            ['all', 'All'],
+            ['current', 'Current PhilGEPS'],
+            ['legacy', 'Old PhilGEPS'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={portal === value ? 'filter mono is-active' : 'filter mono'}
+              aria-pressed={portal === value}
+              onClick={() => setPortal(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {state === 'ready' && reports.length === 0 ? (
         <p className="state-line mono">No daily scan report is stored.</p>
       ) : null}
-      {state === 'ready' && reports.length > 0 ? (
+      {state === 'ready' && reports.length > 0 && visibleReports.length === 0 ? (
+        <p className="state-line mono">No reports for this portal.</p>
+      ) : null}
+      {state === 'ready' && visibleReports.length > 0 ? (
         <table className="report-index">
           <thead>
             <tr>
+              <th>Portal</th>
               <th>Scan range</th>
               <th>Status</th>
               <th>Software</th>
@@ -116,15 +144,20 @@ export default function ScanReports({ onClose }) {
             </tr>
           </thead>
           <tbody>
-            {reports.map((item) => (
+            {visibleReports.map((item) => (
               <tr key={item.id}>
+                <td data-label="Portal">{item.sourceLabel || 'Current PhilGEPS'}</td>
                 <td data-label="Scan range">
                   <button type="button" onClick={() => {
                     setReport(null)
                     setReportState('loading')
                     setSelectedId(item.id)
                   }}>
-                    {item.from || item.to ? compactWindow(item.from, item.to) : 'Range not recorded'}
+                    {item.source === 'legacy' && item.pageLimit
+                      ? `Open notices / ${item.pageLimit} ${item.pageLimit === 1 ? 'page' : 'pages'}`
+                      : item.from || item.to
+                        ? compactWindow(item.from, item.to)
+                        : 'Range not recorded'}
                   </button>
                 </td>
                 <td data-label="Status">{completionLabel(item)}</td>

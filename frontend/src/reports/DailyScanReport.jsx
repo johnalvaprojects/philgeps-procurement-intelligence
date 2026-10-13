@@ -89,7 +89,10 @@ function OpportunityTable({ rows, showsRecord, head = true }) {
       <tbody>
         {rows.map((row, index) => (
           <tr key={row.referenceNumber || row.title || `opp-${index}`}>
-            <td>{row.referenceNumber || 'Not recorded'}</td>
+            <td>
+              {row.referenceNumber || 'Not recorded'}
+              <div>{row.portalLabel || 'Current PhilGEPS'}</div>
+            </td>
             <td>
               {row.title || 'Not recorded'}
               {currentClassificationNote(row) ? <span className="pub-reclass">{currentClassificationNote(row)}</span> : null}
@@ -227,6 +230,7 @@ export default function DailyScanReport({ report, onClose }) {
   }
 
   const counts = report.counts || {}
+  const legacy = report.legacy && typeof report.legacy === 'object' ? report.legacy : null
   const duration = formatReportDuration(report.durationMs)
   const reason = completionReasonLabel(report.completionReason)
   const hasMatchingCount = Number.isFinite(Number(counts.matchingSoftware))
@@ -243,13 +247,21 @@ export default function DailyScanReport({ report, onClose }) {
   pageNo += 1
   const opportunityNumbers = pages.opportunityPages.map(() => pageNo++)
   const errorNumbers = pages.errorPages.map(() => pageNo++)
-  const supportRows = [
-    ['Matching software opportunities', countText(hasMatchingCount ? counts.matchingSoftware : opportunities.length)],
-    ['Review', countText(counts.review)],
-    ['Not relevant', countText(counts.notRelevant)],
-    ['Errors', countText(counts.errors)],
-    ['Documents downloaded', countText(counts.documentsDownloaded)],
-  ]
+  const supportRows = legacy
+    ? [
+      ['Software', countText(legacy.software)],
+      ['Not relevant', countText(legacy.notRelevant)],
+      ['Review', countText(legacy.review)],
+      ['Duplicates skipped', countText(legacy.duplicatesSkipped)],
+      ['Errors', countText(legacy.errors)],
+    ]
+    : [
+      ['Matching software opportunities', countText(hasMatchingCount ? counts.matchingSoftware : opportunities.length)],
+      ['Review', countText(counts.review)],
+      ['Not relevant', countText(counts.notRelevant)],
+      ['Errors', countText(counts.errors)],
+      ['Documents downloaded', countText(counts.documentsDownloaded)],
+    ]
 
   return (
     <ReportShell
@@ -277,7 +289,8 @@ export default function DailyScanReport({ report, onClose }) {
               <br />
               Report
             </h1>
-            <p className="pub-period">{periodLabel(report.from, report.to)}</p>
+            <p className="pub-period">{legacy ? `Open notices, ${legacy.pageLimit || 'not recorded'} page limit` : periodLabel(report.from, report.to)}</p>
+            <p className="pub-meta">{report.sourceLabel || 'Current PhilGEPS'}</p>
             <p className="pub-meta">Started {report.startedAt ? formatManilaTimestamp(report.startedAt) : 'Not recorded'}</p>
             <p className="pub-meta">Completed {report.finishedAt ? formatManilaTimestamp(report.finishedAt) : 'Not recorded'}</p>
             <p className="pub-meta">Generated {report.generatedAt ? formatManilaTimestamp(report.generatedAt) : 'Not recorded'}</p>
@@ -286,6 +299,26 @@ export default function DailyScanReport({ report, onClose }) {
             </p>
             <p className="pub-meta">Duration {duration || 'Not recorded'}</p>
 
+            {legacy ? (
+              <div className="pub-stats">
+                <div>
+                  <b>{countText(legacy.pagesVisited)}</b>
+                  <span>Pages visited</span>
+                </div>
+                <div>
+                  <b>{countText(legacy.noticesInspected)}</b>
+                  <span>Notices inspected</span>
+                </div>
+                <div>
+                  <b>{countText(legacy.smallValueFound)}</b>
+                  <span>Small Value notices</span>
+                </div>
+                <div>
+                  <b>{countText(legacy.noticesSaved)}</b>
+                  <span>Notices saved</span>
+                </div>
+              </div>
+            ) : (
             <div className="pub-stats">
               <div>
                 <b>{countText(counts.discovered)}</b>
@@ -304,6 +337,7 @@ export default function DailyScanReport({ report, onClose }) {
                 <span>Previously saved notices</span>
               </div>
             </div>
+            )}
 
             <div className="pub-support">
               <p className="pub-kicker">Supporting figures</p>
@@ -317,7 +351,12 @@ export default function DailyScanReport({ report, onClose }) {
               </dl>
             </div>
 
-            {hasMatchingCount || savedNote || showsRecord ? (
+            {legacy ? (
+              <div className="pub-method">
+                <p className="pub-kicker">Reporting notes</p>
+                <p>Only public open notices were scanned. Each page lists about 20 notices. Login-protected attachments were not requested.</p>
+              </div>
+            ) : hasMatchingCount || savedNote || showsRecord ? (
               <div className="pub-method">
                 <p className="pub-kicker">Reporting notes</p>
                 <div className="pub-method-grid">
@@ -415,7 +454,10 @@ export default function DailyScanReport({ report, onClose }) {
               <tbody>
                 {opportunities.map((row, index) => (
                   <tr key={row.referenceNumber || `probe-opp-${index}`} data-opp={index}>
-                    <td>{row.referenceNumber || 'Not recorded'}</td>
+                    <td>
+              {row.referenceNumber || 'Not recorded'}
+              <div>{row.portalLabel || 'Current PhilGEPS'}</div>
+            </td>
                     <td>
               {row.title || 'Not recorded'}
               {currentClassificationNote(row) ? <span className="pub-reclass">{currentClassificationNote(row)}</span> : null}

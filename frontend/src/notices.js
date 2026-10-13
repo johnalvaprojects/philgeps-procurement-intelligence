@@ -49,12 +49,17 @@ export function featuredNotices(notices, classification = 'software', limit = 5)
   })).slice(0, limit)
 }
 
+export function noticePortal(notice) {
+  return notice?.source === 'legacy' ? 'legacy' : 'current'
+}
+
 export function filterNotices(notices, {
   query,
   classification,
   workStatus = 'active',
   publishedFrom = '',
   publishedTo = '',
+  portal = 'all',
 }) {
   const needle = query.trim().toLowerCase()
   const fromTime = filterDayTime(publishedFrom)
@@ -62,6 +67,7 @@ export function filterNotices(notices, {
   const dateFilterActive = fromTime != null || toTime != null
 
   return notices.filter((notice) => {
+    if (portal !== 'all' && noticePortal(notice) !== portal) return false
     if (classification !== 'all' && notice.classification !== classification) return false
     if (classification === 'software' && workStatus !== 'all') {
       const status = effectiveWorkStatus(notice)
@@ -86,11 +92,12 @@ export function filterNotices(notices, {
 }
 
 /** Notices in the active Published Date Filter only (ignores search/classification). */
-export function noticesInPublishedRange(notices, publishedFrom = '', publishedTo = '') {
+export function noticesInPublishedRange(notices, publishedFrom = '', publishedTo = '', portal = 'all') {
   return filterNotices(notices, {
     query: '',
     classification: 'all',
     publishedFrom,
     publishedTo,
+    portal,
   })
 }

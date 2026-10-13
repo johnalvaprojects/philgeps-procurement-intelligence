@@ -22,6 +22,7 @@ import {
   sortNotices,
 } from './notices.js'
 import { formatScanRangeLabel, validateScanRange } from './scan-range.js'
+import { parseLegacyPageLimit } from './scan-portal.js'
 import { prefersReducedMotion } from './useReducedMotion.js'
 import { apiFetch, setCsrfToken } from './api.js'
 import './App.css'
@@ -58,6 +59,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   const [noticesState, setNoticesState] = useState('loading')
   const [query, setQuery] = useState('')
   const [classification, setClassification] = useState('all')
+  const [portal, setPortal] = useState('all')
   const [workStatus, setWorkStatus] = useState('active')
   const [publishedFrom, setPublishedFrom] = useState('')
   const [publishedTo, setPublishedTo] = useState('')
@@ -67,6 +69,8 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   const [scanError, setScanError] = useState('')
   const [scanFrom, setScanFrom] = useState('')
   const [scanTo, setScanTo] = useState('')
+  const [scanPortal, setScanPortal] = useState('current')
+  const [pageLimit, setPageLimit] = useState(1)
   const [activeScanRange, setActiveScanRange] = useState(null)
   const [selected, setSelected] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -121,7 +125,12 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
         if (cancelled) return
         if (body?.running === true) {
           setScanning(true)
-          if (body.from && body.to) setActiveScanRange({ from: body.from, to: body.to })
+          if (body.portal === 'legacy') {
+            setScanPortal('legacy')
+            if (body.pageLimit) setPageLimit(body.pageLimit)
+          } else if (body.from && body.to) {
+            setActiveScanRange({ from: body.from, to: body.to })
+          }
         }
       })
       .catch(() => {})
@@ -160,7 +169,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
           setActiveScanRange(null)
           return
         }
-        if (body.from && body.to) {
+        if (body.portal !== 'legacy' && body.from && body.to) {
           setActiveScanRange({ from: body.from, to: body.to })
         }
       } catch {
@@ -189,6 +198,34 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   async function startScan() {
     if (scanning) return
     setScanError('')
+    if (scanPortal === 'legacy') {
+      const validation = parseLegacyPageLimit(pageLimit)
+      if (!validation.ok) {
+        setScanError(validation.error)
+        return
+      }
+      try {
+        const response = await apiFetch('/api/scan/legacy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pageLimit: validation.pageLimit }),
+        })
+        if (response.status === 202 || response.status === 409) {
+          setScanning(true)
+          setActiveScanRange(null)
+          return
+        }
+        if (response.status === 400) {
+          const body = await response.json().catch(() => ({}))
+          setScanError(body?.error || 'Old PhilGEPS page limit must be a whole number from 1 to 5.')
+          return
+        }
+        setScanError('Unable to start the scan.')
+      } catch {
+        setScanError('Unable to start the scan.')
+      }
+      return
+    }
     const validation = validateScanRange(scanFrom, scanTo)
     if (!validation.ok) {
       setScanError(validation.error)
@@ -236,8 +273,11 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   }
 
   function applyClassification(updated) {
+    const reference = updated?.notice?.referenceNumber ?? updated?.referenceNumber
     setNotices((current) => current.map((notice) => {
-      if (String(notice.referenceNumber) !== String(updated.referenceNumber)) return notice
+      const sameStorage = notice.storageId && String(notice.storageId) === String(selected)
+      const sameReference = !notice.storageId && String(notice.referenceNumber) === String(reference)
+      if (!sameStorage && !sameReference) return notice
       return {
         ...notice,
         classification: updated.classification,
@@ -310,8 +350,8 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   }
 
   const dateScopedNotices = useMemo(
-    () => noticesInPublishedRange(notices, publishedFrom, publishedTo),
-    [notices, publishedFrom, publishedTo],
+    () => noticesInPublishedRange(notices, publishedFrom, publishedTo, portal),
+    [notices, publishedFrom, publishedTo, portal],
   )
   const counts = noticesState === 'ready' ? countClassifications(dateScopedNotices) : EMPTY_COUNTS
   const visibleNotices = useMemo(
@@ -321,8 +361,9 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
       workStatus,
       publishedFrom,
       publishedTo,
+      portal,
     }),
-    [notices, query, classification, workStatus, publishedFrom, publishedTo],
+    [notices, query, classification, workStatus, publishedFrom, publishedTo, portal],
   )
   const pageCount = Math.max(1, Math.ceil(visibleNotices.length / pageSize) || 1)
   const currentPage = Math.min(page, pageCount)
@@ -376,9 +417,11 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
         <Header
           online={online}
           scanning={scanning}
-          scanRangeLabel={activeScanRange
-            ? formatScanRangeLabel(activeScanRange.from, activeScanRange.to)
-            : ''}
+          scanRangeLabel={scanning && scanPortal === 'legacy'
+            ? `Old PhilGEPS / ${pageLimit} ${pageLimit === 1 ? 'page' : 'pages'}`
+            : activeScanRange
+              ? formatScanRangeLabel(activeScanRange.from, activeScanRange.to)
+              : ''}
           onShowOpportunities={() => showOpportunities()}
           onShowSoftware={staff ? () => showOpportunities('software') : null}
           onShowAwards={awardsEnabled ? () => setSection('awards') : null}
@@ -406,6 +449,10 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
             onScanToChange={setScanTo}
             onClearScanRange={clearScanRange}
             onScan={startScan}
+            scanPortal={scanPortal}
+            onScanPortal={setScanPortal}
+            pageLimit={pageLimit}
+            onPageLimit={setPageLimit}
             showScan={staff}
             lede={staff
               ? undefined
@@ -441,6 +488,11 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
               onQueryChange={updateQuery}
               active={classification}
               onSelect={updateClassification}
+              portal={portal}
+              onPortal={(value) => {
+                setPortal(value)
+                setPage(1)
+              }}
               workStatus={workStatus}
               onWorkStatus={updateWorkStatus}
               publishedFrom={publishedFrom}

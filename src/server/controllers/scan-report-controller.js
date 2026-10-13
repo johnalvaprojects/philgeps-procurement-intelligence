@@ -3,6 +3,7 @@ import path from "node:path";
 import { projectRoot } from "../../project-root.js";
 import { attachCurrentClassifications, listScanReports, readScanReport, SCAN_REPORTS_DIR } from "../../scan-reports.js";
 import { readWeeklyReport } from "../../weekly-report.js";
+import { portalFromPacket } from "../../notice-source.js";
 
 function reportsDirectory(req) {
   return req.app.get("scanReportsDir") || SCAN_REPORTS_DIR;
@@ -51,7 +52,15 @@ export async function getScanReportById(req, res, next) {
         packets.set(id, null);
       }
     }
-    res.json(attachCurrentClassifications(report, packets));
+    const view = attachCurrentClassifications(report, packets);
+    const portal = portalFromPacket(report);
+    view.source = report.source || portal.id;
+    view.sourceLabel = portal.label;
+    for (const row of view.softwareOpportunities || []) {
+      const packet = packets.get(String(row?.referenceNumber || ""));
+      row.portalLabel = portalFromPacket(packet || {}).label;
+    }
+    res.json(view);
   } catch (error) {
     next(error);
   }

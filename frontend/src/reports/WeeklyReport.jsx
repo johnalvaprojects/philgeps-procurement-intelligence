@@ -82,6 +82,7 @@ function NoticeEntry({ row }) {
     <article className="pub-notice">
       <div className="pub-notice-top">
         <p>{recorded(row.referenceNumber)}</p>
+        <p>{row.portalLabel || 'Current PhilGEPS'}</p>
         <p>{status.missing ? status.label : status.reclassified ? `Current: ${status.label}` : status.label}</p>
       </div>
       <h3>{recorded(row.title)}</h3>
@@ -468,6 +469,7 @@ export default function WeeklyReport({ onClose }) {
               Report
             </h1>
             <p className="pub-period">{periodLabel}</p>
+            <p className="pub-meta">{report?.sourceLabel || 'Current PhilGEPS'}</p>
             <p className="pub-meta">Generated {generatedLabel}</p>
             <p className="pub-meta">Asia/Manila, Monday through Sunday</p>
 

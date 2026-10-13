@@ -9,3 +9,8 @@ data/merchant-awards/
 !data/documents/.gitkeep
 !data/output/.gitkeep
 !data/logs/.gitkeep
+backup/
+data/tmp-*.txt
+/test-out.txt
+/extract-*.txt
+frontend/tmp-*.txt

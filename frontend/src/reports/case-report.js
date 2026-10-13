@@ -1,3 +1,4 @@
+import { portalFromPacket } from '../../../src/notice-source.js'
 import { buildTechnicalSummary } from '../requirements/technical-summary.js'
 
 function text(value) {
@@ -90,6 +91,7 @@ export function buildCaseReport(packet = {}) {
     extractionStatus: text(requirements?.extractionStatus),
     conflicts: Array.isArray(requirements?.conflicts) ? requirements.conflicts : [],
     fieldsNeedingReview: Array.isArray(requirements?.fieldsNeedingReview) ? requirements.fieldsNeedingReview : [],
+    portalLabel: portalFromPacket(packet, packet?.storageId || '').label,
     classification: text(packet.classification),
     classificationSource: text(packet.classificationSource),
     reviewed: packet.reviewed === true || packet.review?.status === 'reviewed'

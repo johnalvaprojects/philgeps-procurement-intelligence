@@ -16,11 +16,19 @@ const WORK_FILTERS = [
   { id: 'done', label: 'Done' },
 ]
 
+const PORTALS = [
+  ['all', 'All'],
+  ['current', 'Current PhilGEPS'],
+  ['legacy', 'Old PhilGEPS'],
+]
+
 export default function NoticeFilters({
   query,
   onQueryChange,
   active,
   onSelect,
+  portal = 'all',
+  onPortal,
   workStatus,
   onWorkStatus,
   publishedFrom,
@@ -46,6 +54,32 @@ export default function NoticeFilters({
             placeholder="Reference, title, or organization"
           />
         </label>
+      </div>
+
+      <div className="manifest-row" role="group" aria-label="Portal filter">
+        <span className="manifest-key mono">Portal</span>
+        <div className="filter-group">
+          {PORTALS.map(([value, label], index) => (
+            <span key={value} className="filter-item">
+              {index > 0 ? <span className="filter-slash" aria-hidden="true">/</span> : null}
+              <button
+                type="button"
+                className={portal === value ? 'filter mono is-active' : 'filter mono'}
+                onClick={() => onPortal?.(value)}
+                onMouseEnter={() => labels.current[`portal-${value}`]?.play()}
+                onFocus={() => labels.current[`portal-${value}`]?.play()}
+                aria-pressed={portal === value}
+              >
+                <LineHoverText
+                  ref={(node) => {
+                    labels.current[`portal-${value}`] = node
+                  }}
+                  text={label}
+                />
+              </button>
+            </span>
+          ))}
+        </div>
       </div>
 
       {showClassification ? <div className="manifest-row" role="group" aria-label="Classification filter">

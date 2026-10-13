@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { projectRoot } from './project-root.js';
+import { portalFromPacket } from './notice-source.js';
 import { getScanProgress } from './scan-progress.js';
 
 export const SCAN_REPORTS_DIR = path.join(projectRoot, 'data', 'output', 'scan-reports');
@@ -124,6 +125,28 @@ export async function persistFinishedScanReport({
 } = {}) {
   const progress = getScanProgress();
   const report = buildScanReport({ progress, rows, mode, errorMessage });
+  if (progress.portal === 'legacy') {
+    report.source = { id: 'legacy', label: 'Old PhilGEPS' };
+    report.legacy = {
+      pageLimit: Number.isInteger(progress.pageLimit) ? progress.pageLimit : null,
+      pagesVisited: Number(progress.pagesVisited) || 0,
+      noticesInspected: Number(progress.noticesInspected) || 0,
+      smallValueFound: Number(progress.smallValueFound) || 0,
+      software: Number(progress.softwareCount) || 0,
+      notRelevant: Number(progress.notRelevantCount) || 0,
+      review: Number(progress.reviewCount) || 0,
+      noticesSaved: Number(progress.noticesSaved) || 0,
+      duplicatesSkipped: Number(progress.duplicatesSkipped) || 0,
+      errors: Number(progress.errorCount) || 0,
+    };
+    if (Array.isArray(progress.legacyErrors) && progress.legacyErrors.length > 0) {
+      report.errors = progress.legacyErrors.map((item) => ({
+        referenceNumber: item?.referenceNumber ? String(item.referenceNumber) : null,
+        message: item?.message ? String(item.message) : '',
+      }));
+      report.counts.errors = report.errors.length;
+    }
+  }
   return writeScanReport(directory, report);
 }
 
@@ -143,6 +166,7 @@ export async function listScanReports(directory = SCAN_REPORTS_DIR) {
     if (!isSafeReportId(id)) continue;
     try {
       const report = JSON.parse(await readFile(path.join(directory, name), 'utf8'));
+      const portal = portalFromPacket(report);
       reports.push({
         id: report.id || id,
         startedAt: report.startedAt ?? null,
@@ -154,6 +178,9 @@ export async function listScanReports(directory = SCAN_REPORTS_DIR) {
         completionReason: report.completionReason || null,
         durationMs: Number.isFinite(Number(report.durationMs)) ? Number(report.durationMs) : null,
         counts: report.counts || null,
+        source: portal.id,
+        sourceLabel: portal.label,
+        pageLimit: Number.isInteger(report.legacy?.pageLimit) ? report.legacy.pageLimit : null,
       });
     } catch {
       // Skip unreadable files. Do not invent a summary.

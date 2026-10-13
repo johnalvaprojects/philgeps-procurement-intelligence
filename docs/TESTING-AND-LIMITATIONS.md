@@ -112,17 +112,30 @@ These points are what the code does. They are not a penetration test.
 - PhilGEPS requests use a normal browser User-Agent, a delay, a timeout, and one retry. The client does not log in and does not store cookies for a session.
 - One notice error does not delete other saved files. A failed report write does not roll back notice JSON already saved.
 
-## Phase 3 — NOT IMPLEMENTED
+## Old PhilGEPS scanner
 
-Legacy PhilGEPS (`https://notices.philgeps.gov.ph`) is planned only. There is no `src/philgeps-legacy/` package, no legacy route, and no scan mode for that host.
+The Old PhilGEPS reader is implemented in `src/philgeps-legacy/`. `POST /api/scan/legacy` starts it. `docs/V2_IMPLEMENTATION_PLAN.md` is the earlier plan. Where it still says the adapter is not built, this section and the code are the current behavior.
 
-`docs/V2_IMPLEMENTATION_PLAN.md` describes a possible later adapter: public abstract fields, separate ids so legacy files cannot overwrite modern `data/output/<digits>.json` files, and no change to the classifier or OCR for that work. None of that adapter is in the running application. Do not treat the plan as current behavior.
+What the scanner does:
+
+- It requests only public pages on `https://notices.philgeps.gov.ph`.
+- The reviewer chooses 1 to 5 open-list pages. Each page lists about 20 open notices. The walk follows the site's next-page form post. It does not jump to an arbitrary historical page.
+- It reads the public abstract, keeps Small Value Procurement notices, and classifies them with the existing title and structured-field rules.
+- It saves `data/output/legacy-<refID>.json`. It does not overwrite a Current PhilGEPS `<digits>.json` file or an existing legacy file.
+- Finished runs record page and classification totals on the scan report. The dashboard does not keep that list under the scan button.
+
+Public-only limits:
+
+- Detailed Search cannot reliably filter by Small Value Procurement or by publication date. The scanner does not use it.
+- The open list is current open opportunities, not a closed historical archive. Five pages is the maximum for one run.
+- Document links that require login are not followed. Those notices are not OCR'd and do not get document-based requirement extraction. The notice can show "Documents unavailable — login required" when the abstract links to the document request list.
+- A timeout, HTTP failure, missing viewstate, or the site's "Transaction cannot be completed" page stops the rest of the walk. Notices already saved remain.
+- Tests use saved HTML fixtures and mocked requests. They do not call the live site.
 
 ## Possible later improvements
 
 These are gaps visible from the current code, not a committed schedule.
 
-- A legacy public-notice adapter, only after the Phase 3 plan is explicitly started.
 - Page and table structure in PDF extraction, so technical fields can cite a page.
 - A second keyword check after sentence splits, so contract clauses are less likely to enter the technical archive. That would be an extraction change and needs its own review. The current summary does not do this.
 - Authentication and a real deployment layout, if the API ever leaves the developer's machine.

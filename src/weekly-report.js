@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { portalFromPacket } from './notice-source.js';
 import path from 'node:path';
 import { projectRoot } from './project-root.js';
 import { parseIsoCalendarDay } from './scan-range.js';
@@ -208,6 +209,7 @@ export function buildWeeklyReport({
       workStatus: fields.workStatus,
       extractionStatus,
       record: group.kind,
+      portalLabel: portalFromPacket(packets.get(group.referenceNumber) || {}).label,
     };
     if (group.kind === 'new') {
       opportunities.push(item);
@@ -274,6 +276,9 @@ export function buildWeeklyReport({
       basis: 'current',
       ...workStatus,
     },
+    sourceLabel: included.length > 0 && included.every((report) => portalFromPacket(report).id === 'legacy')
+      ? 'Old PhilGEPS'
+      : 'Current PhilGEPS',
     opportunities,
     previouslySaved,
     unknownSoftware,

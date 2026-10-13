@@ -25,7 +25,7 @@ export default function OpportunityList({ notices, state, onOpen, showStatus = t
       </div>
       <ul className="list-body">
         {notices.map((notice) => {
-          const id = notice.referenceNumber
+          const id = notice.storageId || notice.referenceNumber
           const kind = statusKind(notice.classification)
           return (
             <li key={id || notice.title}>
@@ -44,6 +44,8 @@ export default function OpportunityList({ notices, state, onOpen, showStatus = t
                   <span className="entry-title">{displayText(notice.title)}</span>
                   <span className="entry-meta mono">
                     <span className="entry-org">{displayText(notice.organization)}</span>
+                    <span className="entry-meta-sep" aria-hidden="true">·</span>
+                    <span>{notice.sourceLabel || 'Current PhilGEPS'}</span>
                     <span className="entry-meta-sep" aria-hidden="true">·</span>
                     <span className="entry-date">
                       <span className="entry-date-key">Pub</span>{' '}

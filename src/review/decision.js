@@ -4,6 +4,7 @@ import path from 'node:path';
 import { classificationLabel } from '../classification/cache.js';
 import { attachWorkStatus } from './work-status.js';
 import { updateMetadataDecision } from '../documents/metadata.js';
+import { isSafeStorageId } from '../notice-source.js';
 import { parseNoticeId } from '../philgeps/notices.js';
 import { log } from '../log.js';
 import { packetsToRows, renderReviewList } from './list.js';
@@ -100,11 +101,16 @@ export async function decideSavedNotice(referenceInput, decisionInput, {
   reviewedAt = new Date(),
 } = {}) {
   let noticeId;
-  try {
-    noticeId = parseNoticeId(referenceInput);
-  } catch (error) {
-    error.code = 'INVALID_NOTICE_ID';
-    throw error;
+  const directId = String(referenceInput ?? '').trim();
+  if (isSafeStorageId(directId)) {
+    noticeId = directId;
+  } else {
+    try {
+      noticeId = parseNoticeId(referenceInput);
+    } catch (error) {
+      error.code = 'INVALID_NOTICE_ID';
+      throw error;
+    }
   }
 
   let decision;

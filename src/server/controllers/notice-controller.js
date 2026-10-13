@@ -6,6 +6,12 @@ import { decideSavedNotice } from "../../review/decision.js";
 import { publicWorkStatus, setSavedWorkStatus } from "../../review/work-status.js";
 import { publicNoticeFields } from "../../auth/public-notice.js";
 import { requestHasGuestFullAccess } from "../../auth/access.js";
+import {
+  documentsRequireLogin,
+  isSafeStorageId,
+  portalFromPacket,
+  storageIdFromFilename,
+} from "../../notice-source.js";
 
 const OUTPUT_DIR = path.join(projectRoot, "data", "output");
 const DOCUMENTS_DIR = path.join(projectRoot, "data", "documents");
@@ -18,36 +24,61 @@ function documentsDirectory(req) {
   return req.app.get("documentsRoot") || DOCUMENTS_DIR;
 }
 
+function noticeFilePath(directory, id) {
+  if (!isSafeStorageId(id)) return null
+  const root = path.resolve(directory)
+  const filePath = path.resolve(directory, `${id}.json`)
+  if (filePath !== path.join(root, `${id}.json`)) return null
+  return filePath
+}
+
+function noticeSummary(data, storageId) {
+  const portal = portalFromPacket(data, storageId)
+  return {
+    referenceNumber: data.notice?.referenceNumber,
+    storageId,
+    title: data.notice?.title,
+    organization: data.notice?.organization,
+    postedDate: data.notice?.postedDate,
+    deadline: data.notice?.deadline,
+    abc: data.notice?.abc,
+    classification: data.classification,
+    classificationSource: data.classificationSource,
+    reviewed: data.reviewed,
+    workStatus: publicWorkStatus(data),
+    source: portal.id,
+    sourceLabel: portal.label,
+    documentsLoginRequired: documentsRequireLogin(data),
+  }
+}
+
 // Get all saved notices
 export async function getNotices(req, res, next) {
   try {
     const directory = outputDirectory(req);
     const files = await fs.readdir(directory);
 
-    const noticeFiles = files.filter(
-      (file) => file.endsWith(".json") && /^\d+\.json$/.test(file)
-    );
+    const noticeFiles = files.filter((file) => storageIdFromFilename(file));
 
     const notices = await Promise.all(
       noticeFiles.map(async (file) => {
+        const storageId = storageIdFromFilename(file);
         const filePath = path.join(directory, file);
         const content = await fs.readFile(filePath, "utf8");
         const data = JSON.parse(content);
+        const summary = noticeSummary(data, storageId);
 
-        if (req.auth?.role === "guest" && !requestHasGuestFullAccess(req)) return publicNoticeFields(data);
+        if (req.auth?.role === "guest" && !requestHasGuestFullAccess(req)) {
+          return {
+            ...publicNoticeFields(data),
+            storageId,
+            source: summary.source,
+            sourceLabel: summary.sourceLabel,
+            documentsLoginRequired: summary.documentsLoginRequired,
+          };
+        }
 
-        return {
-          referenceNumber: data.notice?.referenceNumber,
-          title: data.notice?.title,
-          organization: data.notice?.organization,
-          postedDate: data.notice?.postedDate,
-          deadline: data.notice?.deadline,
-          abc: data.notice?.abc,
-          classification: data.classification,
-          classificationSource: data.classificationSource,
-          reviewed: data.reviewed,
-          workStatus: publicWorkStatus(data),
-        };
+        return summary;
       })
     );
 
@@ -61,14 +92,18 @@ export async function getNotices(req, res, next) {
 export async function getNoticeById(req, res, next) {
   try {
     const { id } = req.params;
-
     const directory = outputDirectory(req);
-    const filePath = path.join(directory, `${id}.json`);
+    const filePath = noticeFilePath(directory, id);
+    if (!filePath) {
+      return res.status(400).json({ error: "Invalid notice id" });
+    }
 
     const content = await fs.readFile(filePath, "utf8");
     const notice = JSON.parse(content);
+    const portal = portalFromPacket(notice, id);
+    const documentsLoginRequired = documentsRequireLogin(notice);
     if (req.auth?.role === "guest" && !requestHasGuestFullAccess(req)) {
-      res.json({ notice: publicNoticeFields(notice) });
+      res.json({ notice: publicNoticeFields(notice), portal, documentsLoginRequired });
       return;
     }
     const extractedRequirements = await readSavedSoftwareRequirements(id, { outputDir: directory });
@@ -76,7 +111,7 @@ export async function getNoticeById(req, res, next) {
       notice.extractedRequirements = extractedRequirements;
     }
 
-    res.json(notice);
+    res.json({ ...notice, portal, documentsLoginRequired });
   } catch (error) {
     if (error.code === "ENOENT") {
       return res.status(404).json({
@@ -92,6 +127,9 @@ export async function getNoticeById(req, res, next) {
 export async function getNoticeDocuments(req, res, next) {
   try {
     const { id } = req.params;
+    if (!isSafeStorageId(id)) {
+      return res.status(400).json({ error: "Invalid notice id" });
+    }
 
     const documentsDir = path.join(documentsDirectory(req), id);
 
@@ -120,6 +158,9 @@ export async function getNoticeDocuments(req, res, next) {
 export async function getNoticeDocument(req, res, next) {
   try {
     const { id, filename } = req.params;
+    if (!isSafeStorageId(id)) {
+      return res.status(400).json({ error: "Invalid notice id" });
+    }
 
     const documentsDir = path.join(documentsDirectory(req), id);
     const filePath = path.resolve(documentsDir, filename);

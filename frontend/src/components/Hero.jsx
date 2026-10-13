@@ -15,6 +15,10 @@ export default function Hero({
   onScanToChange,
   onClearScanRange,
   onScan,
+  scanPortal = 'current',
+  onScanPortal,
+  pageLimit = 1,
+  onPageLimit,
   showScan = true,
   lede = 'Software opportunities automatically identified from public PhilGEPS Small Value Procurement notices.',
 }) {
@@ -102,13 +106,14 @@ export default function Hero({
 
   const busy = scanning || phase === 'committed'
   const holding = phase === 'holding'
+  const legacyPortal = scanPortal === 'legacy'
   const className = [
     'scan-action',
     holding ? 'is-holding' : '',
     busy ? 'is-scanning' : '',
   ].filter(Boolean).join(' ')
   const accessibleLabel = busy ? 'Scanning...' : (holding || focused) ? 'Hold to scan' : 'Scan PhilGEPS'
-  const rangeActive = Boolean(scanFrom || scanTo)
+  const rangeActive = !legacyPortal && Boolean(scanFrom || scanTo)
 
   return (
     <section className="hero" aria-labelledby="hero-title">
@@ -123,10 +128,30 @@ export default function Hero({
         </h1>
         <p className="hero-lede">{lede}</p>
         {showScan ? <div className="hero-actions">
+          <div className="scan-portal" role="group" aria-label="Scan portal">
+            <button
+              type="button"
+              className={scanPortal === 'current' ? 'filter mono is-active' : 'filter mono'}
+              aria-pressed={scanPortal === 'current'}
+              disabled={busy}
+              onClick={() => onScanPortal?.('current')}
+            >
+              Current PhilGEPS
+            </button>
+            <button
+              type="button"
+              className={scanPortal === 'legacy' ? 'filter mono is-active' : 'filter mono'}
+              aria-pressed={scanPortal === 'legacy'}
+              disabled={busy}
+              onClick={() => onScanPortal?.('legacy')}
+            >
+              Old PhilGEPS
+            </button>
+          </div>
           <div
             className={rangeActive ? 'scan-panel is-custom' : 'scan-panel'}
             role="group"
-            aria-label="Scan publication date range"
+            aria-label={legacyPortal ? 'Old PhilGEPS page limit' : 'Scan publication date range'}
           >
             <div className="scan-panel-meta">
               <span className="mono scan-panel-id">
@@ -134,9 +159,11 @@ export default function Hero({
               </span>
               <div className="scan-panel-meta-right">
                 <span className="mono scan-panel-mode">
-                  Range <span className="scan-panel-slash" aria-hidden="true">/</span>{' '}
-                  {rangeActive ? 'Custom' : 'Default'}
+                  {legacyPortal
+                    ? <>Pages <span className="scan-panel-slash" aria-hidden="true">/</span> {pageLimit}</>
+                    : <>Range <span className="scan-panel-slash" aria-hidden="true">/</span> {rangeActive ? 'Custom' : 'Default'}</>}
                 </span>
+                {legacyPortal ? null : (
                 <button
                   type="button"
                   className={rangeActive ? 'scan-range-clear mono is-active' : 'scan-range-clear mono'}
@@ -145,9 +172,26 @@ export default function Hero({
                 >
                   Use default
                 </button>
+                )}
               </div>
             </div>
 
+            {legacyPortal ? (
+              <div className="scan-page-limit" role="group" aria-label="Page limit">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={pageLimit === value ? 'filter mono is-active' : 'filter mono'}
+                    aria-pressed={pageLimit === value}
+                    disabled={busy}
+                    onClick={() => onPageLimit?.(value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            ) : (
             <div className="scan-panel-dates">
               <div className="scan-range-field">
                 <span className="mono scan-range-key">From</span>
@@ -169,11 +213,14 @@ export default function Hero({
                 />
               </div>
             </div>
+            )}
 
             <p className="mono scan-panel-note">
-              {rangeActive
-                ? 'Custom / PhilGEPS publish window for the next scan'
-                : 'Default / today + previous 3 publish days'}
+              {legacyPortal
+                ? `Open notices / ${pageLimit} ${pageLimit === 1 ? 'page' : 'pages'}`
+                : rangeActive
+                  ? 'Custom / PhilGEPS publish window for the next scan'
+                  : 'Default / today + previous 3 publish days'}
             </p>
 
             <button

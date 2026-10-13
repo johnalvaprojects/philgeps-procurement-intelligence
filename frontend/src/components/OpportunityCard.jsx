@@ -3,7 +3,7 @@ import { effectiveWorkStatus } from '../notices.js'
 import StatusBadge from './StatusBadge.jsx'
 
 export default function OpportunityCard({ notice, onOpen, lead = false }) {
-  const id = notice.referenceNumber
+  const id = notice.storageId || notice.referenceNumber
   return (
     <button
       type="button"
@@ -12,7 +12,8 @@ export default function OpportunityCard({ notice, onOpen, lead = false }) {
       aria-label={`Open notice ${id}: ${displayText(notice.title)}`}
     >
       <span className="card-meta mono">
-        <span>Ref / {displayText(id)}</span>
+        <span>Ref / {displayText(notice.referenceNumber || id)}</span>
+        <span>{notice.sourceLabel || 'Current PhilGEPS'}</span>
         {notice.classification === 'software' ? (
           <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
             {workStatusLabel(effectiveWorkStatus(notice))}

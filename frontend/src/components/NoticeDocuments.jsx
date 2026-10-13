@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '../api.js'
 import { padCount } from '../format.js'
 
-export default function NoticeDocuments({ noticeId }) {
+const LOGIN_REQUIRED = 'Documents unavailable — login required'
+
+export default function NoticeDocuments({ noticeId, documentsLoginRequired = false }) {
   const [documents, setDocuments] = useState([])
   const [state, setState] = useState('loading')
 
@@ -36,7 +38,9 @@ export default function NoticeDocuments({ noticeId }) {
       {state === 'loading' ? <p className="state-line mono">Loading documents...</p> : null}
       {state === 'error' ? <p className="state-line mono">Unable to load documents.</p> : null}
       {state === 'ready' && documents.length === 0 ? (
-        <p className="state-line mono">No downloaded documents.</p>
+        <p className="state-line mono">
+          {documentsLoginRequired ? LOGIN_REQUIRED : 'No downloaded documents.'}
+        </p>
       ) : null}
       {state === 'ready' && documents.length > 0 ? (
         <ol className="document-list">

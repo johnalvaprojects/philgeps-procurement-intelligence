@@ -262,6 +262,19 @@
   max-width: 34rem;
 }
 
+.scan-portal,
+.scan-page-limit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  align-items: baseline;
+}
+
+.scan-page-limit {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--foreground);
+}
+
 /* Swiss command panel — structure from horizontal rules, not a card box */
 .scan-panel {
   display: flex;

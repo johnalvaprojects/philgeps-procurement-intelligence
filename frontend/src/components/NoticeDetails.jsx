@@ -151,6 +151,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified, staff = 
             <h2 id="dossier-title" className="display dossier-title">
               {displayText(notice.title)}
             </h2>
+            <p className="mono dossier-portal">{packet.portal?.label || 'Current PhilGEPS'}</p>
             <p className="dossier-abc">
               <span className="mono">Approved budget</span>
               <span className="display">{formatPeso(notice.abc)}</span>
@@ -207,7 +208,12 @@ export default function NoticeDetails({ noticeId, onBack, onClassified, staff = 
             </section>
           </div>
 
-          {staff ? <NoticeDocuments noticeId={noticeId} /> : null}
+          {staff ? (
+            <NoticeDocuments
+              noticeId={noticeId}
+              documentsLoginRequired={packet.documentsLoginRequired === true}
+            />
+          ) : null}
 
           {staff && packet.classification === 'software' ? (
             <ProcurementRequirements

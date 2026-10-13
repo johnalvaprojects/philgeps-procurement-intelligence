@@ -75,6 +75,7 @@ export default function CaseReport({ packet, onClose }) {
         <p className="report-copy">{blank(report.title)}</p>
         <dl className="report-facts">
           <Record label="PhilGEPS notice ID" value={report.referenceNumber} />
+          <Record label="Portal" value={report.portalLabel || 'Current PhilGEPS'} />
           <Record label="Source" value={report.sourceLabel} />
           <Record label="Procuring agency" value={report.organization} wide />
           <Record label="Published" value={formatReportDate(report.postedDate, 'philgeps')} />

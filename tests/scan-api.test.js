@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, readdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,12 +24,16 @@ function deferred() {
 
 const authByPort = new Map();
 
-async function startApp(run) {
+async function startApp(run, { runLegacy, outputDir, reportsDir } = {}) {
   const app = express();
   app.use(express.json());
   const account = await provisionStaff(app);
   app.set('runScan', run);
-  app.set('scanReportsDir', path.join(tmpdir(), 'philgeps-scan-api-tests'));
+  app.set('runLegacyScan', runLegacy || (async () => {
+    throw new Error('The Old PhilGEPS scanner was not configured for this test.');
+  }));
+  app.set('outputDir', outputDir || path.join(tmpdir(), 'philgeps-scan-api-output'));
+  app.set('scanReportsDir', reportsDir || path.join(tmpdir(), 'philgeps-scan-api-tests'));
   useAuthRoutes(app);
   app.use('/api/scan', scanRoutes);
   const server = await new Promise((resolve) => {
@@ -286,6 +291,136 @@ test('POST /api/scan still returns 409 while a custom-range scan is running', as
     gate.resolve({ failed: false });
     await activeScan();
     assert.equal((await getStatus(port)).body.running, false);
+  } finally {
+    gate.resolve();
+    await activeScan();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('POST /api/scan/legacy validates the page limit and does not start a scan', async () => {
+  let legacyCalls = 0;
+  let currentCalls = 0;
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'legacy-api-invalid-'));
+  const server = await startApp(async () => {
+    currentCalls += 1;
+    return { failed: false };
+  }, {
+    outputDir,
+    runLegacy: async () => {
+      legacyCalls += 1;
+      return { stopped: false, errors: [] };
+    },
+  });
+
+  try {
+    const port = server.address().port;
+    for (const body of [{}, { pageLimit: 0 }, { pageLimit: 6 }, { pageLimit: 1.5 }, { pageLimit: '2' }]) {
+      const response = await fetch(`http://127.0.0.1:${port}/api/scan/legacy`, {
+        method: 'POST',
+        headers: { ...staffHeaders(authByPort.get(port)), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(response.status, 400, JSON.stringify(body));
+    }
+    assert.equal(legacyCalls, 0);
+    assert.equal(currentCalls, 0);
+    assert.equal((await readdir(outputDir)).length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('POST /api/scan/legacy shares the scan lock and records mocked statistics', async () => {
+  const gate = deferred();
+  const seen = [];
+  let currentCalls = 0;
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'legacy-api-run-'));
+  const reportsDir = await mkdtemp(path.join(tmpdir(), 'legacy-api-reports-'));
+  const result = {
+    pagesVisited: 2,
+    noticesInspected: 5,
+    smallValueFound: 3,
+    noticesClassified: 3,
+    noticesSaved: 2,
+    alreadySaved: 1,
+    softwareCount: 1,
+    notRelevantCount: 1,
+    reviewCount: 1,
+    duplicatesSkipped: 2,
+    errors: [{ referenceNumber: '20000009', message: 'The abstract did not include the open-list reference number.' }],
+    stopped: false,
+    stopReason: null,
+  };
+  const server = await startApp(async () => {
+    currentCalls += 1;
+    return { failed: false };
+  }, {
+    outputDir,
+    reportsDir,
+    runLegacy: async (options) => {
+      seen.push(options);
+      options.onProgress?.({ ...result, noticesSaved: 1 });
+      return gate.promise.then(() => result);
+    },
+  });
+
+  try {
+    const port = server.address().port;
+    const started = await fetch(`http://127.0.0.1:${port}/api/scan/legacy`, {
+      method: 'POST',
+      headers: { ...staffHeaders(authByPort.get(port)), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageLimit: 2 }),
+    });
+    assert.equal(started.status, 202);
+    assert.deepEqual(await started.json(), { status: 'started', portal: 'legacy', pageLimit: 2 });
+
+    const active = await getStatus(port);
+    assert.equal(active.body.running, true);
+    assert.equal(active.body.portal, 'legacy');
+    assert.equal(active.body.pageLimit, 2);
+    assert.equal(active.body.pagesVisited, 2);
+    assert.equal(active.body.noticesSaved, 1);
+
+    const currentConflict = await postScan(port, { from: '2026-09-28', to: '2026-09-30' });
+    assert.equal(currentConflict.status, 409);
+    const legacyConflict = await fetch(`http://127.0.0.1:${port}/api/scan/legacy`, {
+      method: 'POST',
+      headers: { ...staffHeaders(authByPort.get(port)), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageLimit: 1 }),
+    });
+    assert.equal(legacyConflict.status, 409);
+    assert.equal(currentCalls, 0);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].pageLimit, 2);
+    assert.equal(seen[0].outputDir, outputDir);
+
+    gate.resolve();
+    await activeScan();
+    const finished = await getStatus(port);
+    assert.equal(finished.body.running, false);
+    assert.equal(finished.body.portal, 'legacy');
+    assert.equal(finished.body.sourceLabel, 'Old PhilGEPS');
+    assert.equal(finished.body.pagesVisited, 2);
+    assert.equal(finished.body.noticesInspected, 5);
+    assert.equal(finished.body.smallValueFound, 3);
+    assert.equal(finished.body.softwareCount, 1);
+    assert.equal(finished.body.notRelevantCount, 1);
+    assert.equal(finished.body.reviewCount, 1);
+    assert.equal(finished.body.noticesSaved, 2);
+    assert.equal(finished.body.duplicatesSkipped, 2);
+    assert.equal(finished.body.errorCount, 1);
+    assert.equal(finished.body.complete, true);
+
+    const names = await readdir(reportsDir);
+    assert.equal(names.length, 1);
+    const report = JSON.parse(await readFile(path.join(reportsDir, names[0]), 'utf8'));
+    assert.equal(report.source.id, 'legacy');
+    assert.equal(report.source.label, 'Old PhilGEPS');
+    assert.equal(report.legacy.pageLimit, 2);
+    assert.equal(report.legacy.noticesSaved, 2);
+    assert.equal(report.errors[0].referenceNumber, '20000009');
+    assert.equal((await readdir(outputDir)).length, 0);
   } finally {
     gate.resolve();
     await activeScan();

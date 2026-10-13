@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { isSafeStorageId } from '../notice-source.js';
 import { parseNoticeId } from '../philgeps/notices.js';
 import { log } from '../log.js';
 
@@ -66,11 +67,16 @@ export async function saveWorkStatus(noticeId, workStatus, {
 
 export async function setSavedWorkStatus(referenceInput, workStatusInput, options = {}) {
   let noticeId;
-  try {
-    noticeId = parseNoticeId(referenceInput);
-  } catch (error) {
-    error.code = 'INVALID_NOTICE_ID';
-    throw error;
+  const directId = String(referenceInput ?? '').trim();
+  if (isSafeStorageId(directId)) {
+    noticeId = directId;
+  } else {
+    try {
+      noticeId = parseNoticeId(referenceInput);
+    } catch (error) {
+      error.code = 'INVALID_NOTICE_ID';
+      throw error;
+    }
   }
 
   let workStatus;
