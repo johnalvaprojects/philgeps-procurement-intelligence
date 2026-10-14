@@ -508,8 +508,29 @@
 }
 
 @media (max-width: 860px) {
+  .pub-stage {
+    align-items: flex-start;
+    align-items: safe center;
+  }
+
   .pub-page {
     zoom: 0.62;
+  }
+
+  .pub-probe {
+    position: fixed;
+  }
+}
+
+@media (max-width: 560px) {
+  .pub-page {
+    zoom: 0.42;
+  }
+}
+
+@media (max-width: 360px) {
+  .pub-page {
+    zoom: 0.34;
   }
 }
 

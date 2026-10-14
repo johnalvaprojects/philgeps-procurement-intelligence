@@ -986,6 +986,11 @@
   border-bottom-color: var(--foreground);
 }
 
+.filters.manifest .search input:focus-visible {
+  background: var(--surface);
+  box-shadow: 0 3px 0 0 var(--foreground);
+}
+
 .filters.manifest .filter-group,
 .filters.manifest .date-filters {
   display: flex;
@@ -1057,6 +1062,11 @@
   box-shadow: none;
   background: transparent;
   border-bottom-color: var(--foreground);
+}
+
+.search input:focus-visible {
+  background: var(--surface);
+  box-shadow: 0 3px 0 0 var(--foreground);
 }
 
 .filter-group {
@@ -2578,7 +2588,25 @@
 
 @media (max-width: 600px) {
   .masthead-nav {
+    gap: 0.5rem 1rem;
+  }
+
+  .hero {
+    gap: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .hero-figure {
+    order: 2;
+    font-size: clamp(3.5rem, 22vw, 6rem);
+  }
+
+  .hero-copy {
     gap: 1rem;
+  }
+
+  .hero-title {
+    font-size: clamp(2.2rem, 11vw, 3rem);
   }
 
   .statistics {

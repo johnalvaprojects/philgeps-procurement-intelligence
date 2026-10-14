@@ -45,7 +45,7 @@ export default function NoticeDocuments({ noticeId, documentsLoginRequired = fal
       {state === 'ready' && documents.length > 0 ? (
         <ol className="document-list">
           {documents.map((document, index) => (
-            <li key={document.url || document.filename}>
+            <li key={`${index}-${document.url || document.filename}`}>
               <span className="document-index mono">{String(index + 1).padStart(2, '0')}</span>
               <span className="document-name">{document.filename}</span>
               <a

@@ -349,7 +349,7 @@ export default function WeeklyReport({ onClose }) {
     return () => {
       cancelled = true
     }
-  }, [report, opportunities, unknownSoftware, errors])
+  }, [report])
 
   const period = report?.period
   const weekNav = (
