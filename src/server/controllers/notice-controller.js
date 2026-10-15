@@ -12,6 +12,7 @@ import {
   portalFromPacket,
   storageIdFromFilename,
 } from "../../notice-source.js";
+import { isUnread, loadNoticeReads, recordNoticeRead } from "../../notice-reads/store.js";
 
 const OUTPUT_DIR = path.join(projectRoot, "data", "output");
 const DOCUMENTS_DIR = path.join(projectRoot, "data", "documents");
@@ -22,6 +23,10 @@ function outputDirectory(req) {
 
 function documentsDirectory(req) {
   return req.app.get("documentsRoot") || DOCUMENTS_DIR;
+}
+
+function readsDirectory(req) {
+  return req.app.get("noticeReadsDir");
 }
 
 function noticeFilePath(directory, id) {
@@ -59,6 +64,8 @@ export async function getNotices(req, res, next) {
     const files = await fs.readdir(directory);
 
     const noticeFiles = files.filter((file) => storageIdFromFilename(file));
+    const storageIds = noticeFiles.map((file) => storageIdFromFilename(file));
+    const reads = await loadNoticeReads(readsDirectory(req), directory, storageIds);
 
     const notices = await Promise.all(
       noticeFiles.map(async (file) => {
@@ -67,6 +74,7 @@ export async function getNotices(req, res, next) {
         const content = await fs.readFile(filePath, "utf8");
         const data = JSON.parse(content);
         const summary = noticeSummary(data, storageId);
+        const unread = isUnread(reads, storageId);
 
         if (req.auth?.role === "guest" && !requestHasGuestFullAccess(req)) {
           return {
@@ -75,15 +83,47 @@ export async function getNotices(req, res, next) {
             source: summary.source,
             sourceLabel: summary.sourceLabel,
             documentsLoginRequired: summary.documentsLoginRequired,
+            unread,
           };
         }
 
-        return summary;
+        return { ...summary, unread };
       })
     );
 
     res.json(notices);
   } catch (error) {
+    next(error);
+  }
+}
+
+export async function markNoticeRead(req, res, next) {
+  try {
+    const id = String(req.params.id || "");
+    const directory = outputDirectory(req);
+    const filePath = noticeFilePath(directory, id);
+    if (!filePath) {
+      res.status(400).json({ error: "Invalid notice id" });
+      return;
+    }
+
+    try {
+      await fs.access(filePath);
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        res.status(404).json({ error: "Notice not found" });
+        return;
+      }
+      throw error;
+    }
+
+    const result = await recordNoticeRead(readsDirectory(req), directory, id);
+    res.json(result);
+  } catch (error) {
+    if (error.status) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
     next(error);
   }
 }

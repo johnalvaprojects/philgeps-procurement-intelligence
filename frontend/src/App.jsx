@@ -291,6 +291,35 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   }
 
   function openNotice(id, element) {
+    const shouldRestore = notices.some((notice) => (
+      String(notice.storageId || notice.referenceNumber) === String(id) && notice.unread === true
+    ))
+    if (shouldRestore) {
+      setNotices((current) => current.map((notice) => (
+        String(notice.storageId || notice.referenceNumber) === String(id)
+          ? { ...notice, unread: false }
+          : notice
+      )))
+    }
+    if (id) {
+      apiFetch(`/api/notices/${encodeURIComponent(id)}/read`, { method: 'POST' })
+        .then((response) => {
+          if (response.ok || !shouldRestore) return
+          setNotices((current) => current.map((notice) => (
+            String(notice.storageId || notice.referenceNumber) === String(id)
+              ? { ...notice, unread: true }
+              : notice
+          )))
+        })
+        .catch(() => {
+          if (!shouldRestore) return
+          setNotices((current) => current.map((notice) => (
+            String(notice.storageId || notice.referenceNumber) === String(id)
+              ? { ...notice, unread: true }
+              : notice
+          )))
+        })
+    }
     playPeel('forward', () => {
       originElement.current = element || null
       setSelected({

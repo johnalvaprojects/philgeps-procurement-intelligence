@@ -5,6 +5,7 @@ import {
   getNoticeById,
   getNoticeDocuments,
   getNoticeDocument,
+  markNoticeRead,
   updateNoticeClassification,
   updateNoticeWorkStatus,
 } from "../controllers/notice-controller.js";
@@ -18,6 +19,7 @@ router.get("/", reader, getNotices);
 router.get("/:id/documents", staff, getNoticeDocuments);
 router.get("/:id/documents/:filename", staff, getNoticeDocument);
 router.get("/:id", reader, getNoticeById);
+router.post("/:id/read", reader, requireCsrf, markNoticeRead);
 router.patch("/:id/classification", staff, requireCsrf, updateNoticeClassification);
 router.patch("/:id/work-status", staff, requireCsrf, updateNoticeWorkStatus);
 
