@@ -909,16 +909,72 @@ html.is-sliding {
   text-align: left;
   background: var(--background);
   border: 0;
-  outline: 10px solid var(--foreground);
-  outline-offset: 0;
-  overflow: hidden;
+  outline: none;
+  box-shadow: 0 0 0 10px var(--foreground);
+  overflow: visible;
   transition: background-color var(--motion-fast);
 }
 
+.card-new {
+  position: absolute;
+  z-index: 2;
+  top: -10px;
+  left: -10px;
+  width: 4.6rem;
+  height: 4.6rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.card-new::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--highlight);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  filter: drop-shadow(1px 1px 0 rgba(17, 17, 17, 0.28));
+}
+
+.card-new::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 145%;
+  height: 2px;
+  background: #111111;
+  transform-origin: left bottom;
+  transform: rotate(-45deg);
+}
+
+.card-new span {
+  position: absolute;
+  top: 1.15rem;
+  left: -0.35rem;
+  width: 4.6rem;
+  color: var(--highlight-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  transform: rotate(-45deg);
+}
+
+.card-portal {
+  display: block;
+  width: 100%;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
 .card:focus-visible {
-  outline: 10px solid var(--foreground);
-  outline-offset: 4px;
-  box-shadow: none;
+  outline: none;
+  box-shadow:
+    0 0 0 10px var(--foreground),
+    0 0 0 14px var(--background),
+    0 0 0 16px var(--foreground);
 }
 
 .card:hover {
@@ -945,8 +1001,20 @@ html.is-sliding {
 .card-meta {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  align-items: baseline;
+  gap: 0.75rem 1rem;
   color: var(--muted);
+}
+
+.card-ref {
+  min-width: 0;
+  text-align: left;
+}
+
+.card-date {
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .card-title {
@@ -1480,6 +1548,24 @@ html.is-sliding {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.entry.has-unread {
+  padding-left: 3.4rem;
+}
+
+.entry > .card-new {
+  top: 0;
+  left: 0;
+  width: 3.35rem;
+  height: 3.35rem;
+}
+
+.entry > .card-new span {
+  top: 0.72rem;
+  left: -0.55rem;
+  width: 3.35rem;
+  font-size: 0.58rem;
 }
 
 .entry {
@@ -2893,3 +2979,4 @@ html.is-sliding {
     width: 3px;
   }
 }
+

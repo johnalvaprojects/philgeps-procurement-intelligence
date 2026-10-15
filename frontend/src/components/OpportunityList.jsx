@@ -31,10 +31,15 @@ export default function OpportunityList({ notices, state, onOpen, showStatus = t
             <li key={id || notice.title}>
               <button
                 type="button"
-                className={`entry is-${kind}`}
+                className={`entry is-${kind}${notice.unread === true ? ' has-unread' : ''}`}
                 onClick={(event) => onOpen(id, event.currentTarget)}
                 disabled={!id}
               >
+                {notice.unread === true ? (
+                  <span className="card-new mono">
+                    <span>New</span>
+                  </span>
+                ) : null}
                 <span className={`entry-rail is-${kind}`} aria-hidden="true" />
                 <span className="entry-left">
                   <span className="entry-ref mono">
@@ -66,7 +71,7 @@ export default function OpportunityList({ notices, state, onOpen, showStatus = t
                   {showStatus ? (
                     <span className="entry-status">
                       <StatusBadge classification={notice.classification} />
-                      {notice.classification === 'software' ? (
+                      {notice.classification === 'software' && effectiveWorkStatus(notice) !== 'new' ? (
                         <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
                           {workStatusLabel(effectiveWorkStatus(notice))}
                         </span>

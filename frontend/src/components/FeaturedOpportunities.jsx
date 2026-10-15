@@ -32,7 +32,10 @@ const ENTER_MS = 420
 function sameNoticeList(left, right) {
   if (left === right) return true
   if (!left || !right || left.length !== right.length) return false
-  return left.every((notice, index) => notice.referenceNumber === right[index]?.referenceNumber)
+  return left.every((notice, index) => (
+    notice.referenceNumber === right[index]?.referenceNumber
+    && notice.unread === right[index]?.unread
+  ))
 }
 
 export default function FeaturedOpportunities({

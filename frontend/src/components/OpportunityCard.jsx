@@ -4,22 +4,29 @@ import StatusBadge from './StatusBadge.jsx'
 
 export default function OpportunityCard({ notice, onOpen, lead = false }) {
   const id = notice.storageId || notice.referenceNumber
+  const workStatus = effectiveWorkStatus(notice)
+  const unread = notice.unread === true
   return (
     <button
       type="button"
-      className={lead ? 'card card-lead' : 'card'}
+      className={`${lead ? 'card card-lead' : 'card'}${unread ? ' has-unread' : ''}`}
       onClick={(event) => onOpen(id, event.currentTarget)}
       aria-label={`Open notice ${id}: ${displayText(notice.title)}`}
     >
+      {unread ? (
+        <span className="card-new mono">
+          <span>New</span>
+        </span>
+      ) : null}
+      <span className="card-portal mono">{notice.sourceLabel || 'Current PhilGEPS'}</span>
       <span className="card-meta mono">
-        <span>Ref / {displayText(notice.referenceNumber || id)}</span>
-        <span>{notice.sourceLabel || 'Current PhilGEPS'}</span>
-        {notice.classification === 'software' ? (
-          <span className={`work-mark mono is-${effectiveWorkStatus(notice)}`}>
-            {workStatusLabel(effectiveWorkStatus(notice))}
+        <span className="card-ref">Ref / {displayText(notice.referenceNumber || id)}</span>
+        {workStatus && workStatus !== 'new' ? (
+          <span className={`work-mark mono is-${workStatus}`}>
+            {workStatusLabel(workStatus)}
           </span>
         ) : null}
-        <span>{formatCompactDate(notice.postedDate)}</span>
+        <span className="card-date">{formatCompactDate(notice.postedDate)}</span>
       </span>
       <span className="card-title display">{displayText(notice.title)}</span>
       <span className="card-foot">
