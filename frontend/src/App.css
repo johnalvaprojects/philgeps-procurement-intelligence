@@ -1840,7 +1840,16 @@ html.is-sliding {
 }
 
 .dossier-case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.7rem;
   color: var(--muted);
+}
+
+.dossier-case-portal::before {
+  content: "/";
+  margin-right: 0.7rem;
 }
 
 .dossier .text-link,

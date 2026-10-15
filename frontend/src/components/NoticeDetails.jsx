@@ -130,7 +130,12 @@ export default function NoticeDetails({ noticeId, onBack, onClassified, staff = 
           <button type="button" className="back-link mono" onClick={onBack} data-autofocus>
             <span aria-hidden="true">← </span>Back to notices
           </button>
-          <p className="mono dossier-case">Case / {displayText(noticeId)}</p>
+          <p className="mono dossier-case">
+            Case / {displayText(noticeId)}
+            {packet?.portal ? (
+              <span className="dossier-case-portal">{packet.portal.label || 'Current PhilGEPS'}</span>
+            ) : null}
+          </p>
         </div>
         {staff && packet ? (
           <div className="dossier-bar-end">
@@ -151,7 +156,6 @@ export default function NoticeDetails({ noticeId, onBack, onClassified, staff = 
             <h2 id="dossier-title" className="display dossier-title">
               {displayText(notice.title)}
             </h2>
-            <p className="mono dossier-portal">{packet.portal?.label || 'Current PhilGEPS'}</p>
             <p className="dossier-abc">
               <span className="mono">Approved budget</span>
               <span className="display">{formatPeso(notice.abc)}</span>
