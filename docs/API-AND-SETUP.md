@@ -101,7 +101,9 @@ npm run dev
 
 Open the URL Vite prints, usually `http://localhost:5173`. API health check: `http://localhost:3000/api/status`.
 
-Welcome offers guest entry and staff sign-in. A guest is restricted unless `GUEST_FULL_ACCESS=true` and `NODE_ENV` is `development` or `demo`. Do not expose that development server to the public internet: an elevated guest can run scans and change classifications. Staff accounts live in `data/auth/` and are not committed.
+Welcome offers guest entry and staff sign-in. A guest is restricted unless `GUEST_FULL_ACCESS=true` and `NODE_ENV` is `development` or `demo`. Do not expose that development server to the public internet: an elevated guest can run scans, change classifications, and edit Awarded to Us markings. Staff accounts live in `data/auth/` and are not committed.
+
+Sign-in, Continue as guest, and Sign out play a short television channel transition. Reduced motion skips it. A failed sign-in stays on the welcome form.
 
 ## Docker Compose
 
@@ -161,7 +163,15 @@ Dates in scan bodies are `YYYY-MM-DD`. Notice ids are digits.
 ]
 ```
 
-`workStatus` is present for software packets. `publicWorkStatus` returns `new` when a software packet has no stored status.
+`workStatus` is present for software packets. `publicWorkStatus` returns `new` when a software packet has no stored status. `unread` is true when the shared read map has a recorded baseline and this notice id is not in it. Listing notices does not mark them read.
+
+### `POST /api/notices/:id/read`
+
+Requires a signed-in reader and the `x-csrf-token` header.
+
+`200` `{ "noticeId", "read": true, "unread": false }`. The notice JSON is not rewritten.
+
+`401` when no session is present. `403` when the CSRF header is missing. `404` when that saved notice does not exist.
 
 ### `GET /api/notices/:id`
 
@@ -208,6 +218,31 @@ Body:
 Allowed values: `new`, `in-progress`, `done`.
 
 `200` returns the notice classification fields and `workStatus`. `400` or `404` on invalid input or a missing file.
+
+### `GET /api/company-awards`
+
+Staff, or a development or demo guest with `fullAccess: true`. A restricted guest and a production guest receive `403`.
+
+`200`
+
+```json
+{
+  "records": [],
+  "note": "Internal markings. These records are not a confirmation from PhilGEPS."
+}
+```
+
+Each record copies the notice reference, title, and organization, plus `awardNoticeNumber`, `acceptanceStatus` (`pending`, `accepted`, or `unknown`), and `philgepsConfirmed: false`. The award URL is built from the number. The server does not fetch PhilGEPS.
+
+### `PUT /api/company-awards/:noticeId`
+
+Body: `{ "awardNoticeNumber": "99097334", "acceptanceStatus": "unknown" }`. The number is 1 to 12 digits and must be unique across markings. Requires the CSRF header. The saved notice file is not modified.
+
+`400` for a bad number or status. `404` when the notice file is missing. `403` for a restricted or production guest, or a missing CSRF token.
+
+### `DELETE /api/company-awards/:noticeId`
+
+Requires the CSRF header. Removes that marking only.
 
 ### `POST /api/scan`
 
@@ -298,6 +333,9 @@ All of these are gitignored except `.gitkeep` placeholders:
 | `data/output/review.html` | Legacy static review page |
 | `data/documents/<id>/` | Original downloads and `metadata.json` |
 | `data/logs/` | Scan logs |
+| `data/notice-reads/reads.json` | Shared read map for saved notices |
+| `data/company-awards/markings.json` | Awarded to Us markings |
+| `data/auth/` | Staff account and session files |
 
 Do not commit downloaded procurement files or generated case data.
 

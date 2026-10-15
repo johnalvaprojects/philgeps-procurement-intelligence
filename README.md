@@ -15,7 +15,7 @@
 
 ## Status
 
-V1 and V2 Phase 2 are implemented. Phase 3, legacy PhilGEPS at `notices.philgeps.gov.ph`, is planned and not built. See [docs/TESTING-AND-LIMITATIONS.md](docs/TESTING-AND-LIMITATIONS.md).
+V1 and V2 Phase 2 are implemented. The dashboard also reads the public Old PhilGEPS open list, tracks which saved notices have been opened, and keeps an internal Awarded to Us list. See [docs/TESTING-AND-LIMITATIONS.md](docs/TESTING-AND-LIMITATIONS.md).
 
 ## Business problem
 
@@ -111,8 +111,11 @@ Merchant and Awards are archived. See [ARCHIVED_FEATURES.md](ARCHIVED_FEATURES.m
 - Review page with search, classification filters, date filters, and pagination
 - Saved daily scan reports and a printable individual case report
 - Separate work status for software opportunities: new, in progress, and done, kept across later scans
+- Shared read state for saved notices. A triangular NEW sticker means unread. It is not the work-status value `new`
+- Awarded to Us markings, stored apart from the notice file. These are internal records, not a PhilGEPS confirmation
 - Manual mark for software, not relevant, or keep for review
 - Dark mode and a hold-to-scan control on the main page
+- Page transitions: a television channel change on sign-in, guest entry, and sign-out; a page peel when opening a notice, Reports, or Awarded to Us; a slide back when leaving those views
 
 This tool does **not** create a quotation, choose prices, submit a bid, match commercial products, or contact the agency.
 
@@ -128,7 +131,10 @@ This tool does **not** create a quotation, choose prices, submit a bid, match co
 | `src/server/` | Express API used by the React app |
 | `src/scan.js` | Date-window scan and per-notice reuse or processing |
 | `src/scan-reports.js` | Immutable daily scan report files |
-| `frontend/` | React + Vite review interface, case page, and printable reports |
+| `frontend/` | React + Vite review interface, case page, Awarded to Us, and printable reports |
+| `frontend/src/channel-transition.js` | Channel transition for sign-in, guest entry, and sign-out |
+| `src/notice-reads/` | Shared read and unread state for saved notices |
+| `src/company-awards/` | Internal Awarded to Us markings |
 | `config/relevance.json` | Terms used to judge software and non-software titles |
 | `tests/` | Node.js test runner checks |
 | `tests/fixtures/technical-summary/` | Committed inputs for the technical summary tests |
@@ -178,6 +184,8 @@ node src/index.js --reviewed 85876
 - `data/output/<id>.requirements.json` — provenance-aware software requirements for the case page
 - `data/documents/<id>/` — original downloaded files, plus `metadata.json` when the notice is kept
 - `data/logs/` — one log file for each scan
+- `data/notice-reads/reads.json` — which saved notices have been opened. Not committed
+- `data/company-awards/markings.json` — Awarded to Us markings. Not committed
 - `data/output/svp-batch.json` — the short list from a batch run
 - `data/output/review.html` — the saved notices as a page
 

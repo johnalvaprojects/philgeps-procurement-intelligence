@@ -213,6 +213,8 @@ One saved packet plus `extractedRequirements` when present.
 
 **Phase 3 — legacy source**
 
+The public Old PhilGEPS open-list reader is implemented in `src/philgeps-legacy/`. It saves `legacy-<refID>.json`, does not download login-protected documents, and does not change the current PhilGEPS scanner. The checklist below is the original plan. Current behavior is in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 - New `src/philgeps-legacy/` adapter
 - `notice-controller.js` id filter and document path allow-list
 - Thin branch in scan/process entry so modern `search.js` / `notices.js` / `documents.js` stay the default

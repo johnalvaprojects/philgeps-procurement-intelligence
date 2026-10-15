@@ -217,7 +217,7 @@ Technical clauses are admitted by keyword, then split into sentences. A sentence
 
 ## 13. Saved case records
 
-`saveResult` writes `data/output/<id>.json` with the notice, document names, relevance, classification, and work status. New software notices start as work status `new`. A later reuse does not reset `new`, `in-progress`, or `done`.
+`saveResult` writes `data/output/<id>.json` with the notice, document names, relevance, classification, and work status. New software notices start as work status `new`. A later reuse does not reset `new`, `in-progress`, or `done`. A notice file created after the shared read baseline is unread until someone opens it. Reuse does not mark it read and does not clear a read that was already recorded.
 
 Software extraction also writes `data/output/<id>.extracted.txt` when text was read.
 

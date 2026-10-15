@@ -61,6 +61,9 @@ Objectives supported by the **current** project:
 - Conflict detection (e.g. deadlines, ABC financial scopes)
 - Human review UI (dashboard, lists, case detail)
 - Manual classification and software work-status tracking
+- Shared notice read state, separate from work status
+- Internal Awarded to Us markings, separate from the notice file and from PhilGEPS
+- Public Old PhilGEPS open-list scanning, with a page limit and no document download
 - CLI and HTTP API for local operation
 - Automated regression tests
 
@@ -72,7 +75,7 @@ Objectives supported by the **current** project:
 - Automatic quotation generation or submission
 - Autonomous purchasing decisions
 - Login to PhilGEPS merchant/Bid Match features
-- Old PhilGEPS site support
+- Submitting an award acceptance to the official PhilGEPS website
 
 Human verification of software cases remains a designed step, not a temporary gap.
 
@@ -298,6 +301,10 @@ Manual choice overrides automatic classification for subsequent operator workflo
 | `done` | Finished; removed from active software lists/featured views |
 
 Default for software is `new`. Status is kept across later scans when classification remains software.
+
+The triangular NEW sticker on a notice card is unread state, stored in `data/notice-reads/reads.json`. It is not work status `new`. Opening a notice records that id as read and does not change the notice file. Notices already saved when the read baseline was recorded start as read. A notice file created after that baseline stays unread until someone opens it.
+
+Awarded to Us is a separate list. Staff, and a development guest with full access, can mark a saved notice with an award number and an acceptance status of pending, accepted, or unknown. The marking lives in `data/company-awards/markings.json`. It does not change classification, work status, or the notice JSON, and it is not sent to PhilGEPS.
 
 ---
 

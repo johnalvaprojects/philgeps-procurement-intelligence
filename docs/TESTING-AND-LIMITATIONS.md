@@ -46,7 +46,9 @@ Tests use fixtures and stubs. They do not download live PhilGEPS notices and the
 | `tests/docx.test.js`, `tests/xlsx.test.js` | Those extractors |
 | `tests/software-requirements.test.js` | Requirement fields and provenance |
 | `tests/technical-summary.test.js` | Summary uses stored extra fields only, keeps clause text out of the summary, case report matches. Inputs are `tests/fixtures/technical-summary/`, not `data/output/` |
-| `tests/auth.test.js` | Guest and staff sessions, including local guest full access |
+| `tests/auth.test.js` | Guest and staff sessions, including local guest full access. Notice routes use a temporary read directory |
+| `tests/notice-reads.test.js` | Existing notices stay read, later notices stay unread, and a partial or foreign directory cannot record the project baseline |
+| `tests/company-awards.test.js` | Staff and elevated guests can mark, edit, and remove an award. Restricted and production guests are denied. The notice file stays unchanged |
 | `tests/weekly-report.test.js` | Weekly report totals from saved scan reports |
 | `tests/improvements.test.js`, `tests/oct6-regression.test.js` | Regression cases from earlier fixes |
 
