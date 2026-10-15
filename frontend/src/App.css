@@ -107,6 +107,7 @@ html.is-sliding {
 }
 
 .site.is-reports,
+.site.is-awarded,
 .site.is-awards,
 .site.is-merchant {
   --page-end: 2rem;
@@ -2989,3 +2990,129 @@ html.is-sliding {
   }
 }
 
+.company-awards {
+  padding: 0.5rem 0 3rem;
+}
+
+.company-awards-head,
+.company-award-row {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.company-awards-head {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-bottom: var(--rule-strong);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.company-awards-kicker {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+}
+
+.company-awards h1,
+.company-award-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+}
+
+.company-awards h1 {
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+}
+
+.company-award-note,
+.company-award-hint,
+.company-award-agency {
+  max-width: 42rem;
+  color: var(--muted);
+}
+
+.company-award-note {
+  margin: 0.8rem 0 0;
+}
+
+.company-award-list {
+  display: grid;
+}
+
+.company-award-row {
+  padding: 1.4rem 0 1.6rem;
+  border-bottom: var(--rule);
+}
+
+.company-award-row h2 {
+  margin: 0.35rem 0 0.45rem;
+  max-width: 46rem;
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.company-award-ref,
+.company-award-agency,
+.company-award-hint {
+  margin: 0;
+}
+
+.company-award-facts {
+  margin-top: 1rem;
+}
+
+.company-award-form {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 28rem;
+  margin-top: 0.85rem;
+}
+
+.company-award-form label {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.company-award-form input,
+.company-award-form select {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: var(--rule-strong);
+  border-radius: 0;
+  padding: 0.45rem 0;
+}
+
+.company-award-actions,
+.company-award-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.company-award-confirm {
+  display: grid;
+  justify-items: start;
+}
+
+.company-award-confirm p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .company-awards-head {
+    grid-template-columns: 1fr;
+  }
+
+  .company-award-facts {
+    grid-template-columns: 1fr;
+  }
+}

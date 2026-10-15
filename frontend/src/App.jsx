@@ -13,6 +13,7 @@ import Awards from '../../archive/merchant-awards/frontend/Awards.jsx'
 import MerchantDesk from '../../archive/merchant-awards/frontend/MerchantDesk.jsx'
 import { featureEnabled } from '../../config/features.js'
 import ScanReports from './reports/ScanReports.jsx'
+import AwardedToUs from './components/CompanyAwards.jsx'
 import { padCount } from './format.js'
 import {
   countClassifications,
@@ -56,6 +57,7 @@ function plainRect(rect) {
 
 export default function App({ role = 'staff', fullAccess = false, onSignedOut }) {
   const staff = role === 'staff' || fullAccess
+  const companyAwards = staff
   const [online, setOnline] = useState(null)
   const [notices, setNotices] = useState([])
   const [noticesState, setNoticesState] = useState('loading')
@@ -77,6 +79,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   const [selected, setSelected] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [section, setSection] = useState(() => openSection(new URLSearchParams(window.location.search).get('view'), staff))
+  const [awardRevision, setAwardRevision] = useState(0)
   const wasScanning = useRef(false)
   const originElement = useRef(null)
 
@@ -393,7 +396,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   }
 
   function showOpportunities(filter, { scrollTo = 'list', peel = true } = {}) {
-    const leavingDesk = section === 'reports'
+    const leavingDesk = section === 'reports' || section === 'awarded'
     const classChange = Boolean(filter) && filter !== classification
     const sectionChange = section !== 'notices'
     const target = scrollTo === 'featured' ? 'featured' : 'opportunities'
@@ -473,7 +476,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
 
   return (
     <>
-      <div className={`${selected ? 'site is-receded' : 'site'}${section === 'reports' ? ' is-reports' : ''}${section === 'awards' ? ' is-awards' : ''}${section === 'merchant' && staff ? ' is-merchant' : ''}`} aria-hidden={selected ? 'true' : undefined}>
+      <div className={`${selected ? 'site is-receded' : 'site'}${section === 'reports' ? ' is-reports' : ''}${section === 'awarded' && companyAwards ? ' is-awarded' : ''}${section === 'awards' ? ' is-awards' : ''}${section === 'merchant' && staff ? ' is-merchant' : ''}`} aria-hidden={selected ? 'true' : undefined}>
         <div className="page-sheet" id="top">
         <Header
           online={online}
@@ -487,6 +490,12 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
           onShowSoftware={staff ? () => showOpportunities('software') : null}
           onShowAwards={awardsEnabled ? () => setSection('awards') : null}
           onShowMerchant={merchantEnabled && staff ? () => setSection('merchant') : null}
+          onShowAwarded={companyAwards ? () => {
+            if (section === 'awarded') return
+            playPeel('forward', () => setSection('awarded'), () => {
+              window.scrollTo({ top: 0, behavior: 'auto' })
+            })
+          } : null}
           onShowReports={staff ? () => {
             if (section === 'reports') return
             playPeel('forward', () => setSection('reports'), () => {
@@ -498,6 +507,11 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
         <main>
           {section === 'reports' && staff ? (
             <ScanReports onClose={() => playSlideBack(() => setSection('notices'))} />
+          ) : section === 'awarded' && companyAwards ? (
+            <AwardedToUs
+              revision={awardRevision}
+              onClose={() => playSlideBack(() => setSection('notices'))}
+            />
           ) : awardsEnabled && section === 'awards' ? (
             <Awards staff={staff} />
           ) : merchantEnabled && section === 'merchant' && staff ? (
@@ -587,10 +601,10 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
           </section>
           </>
           )}
-          {section === 'reports' && staff || section === 'awards' || (section === 'merchant' && staff) ? null : <div className="footer-reveal-sentinel" aria-hidden="true" />}
+          {section === 'reports' && staff || section === 'awarded' && companyAwards || section === 'awards' || (section === 'merchant' && staff) ? null : <div className="footer-reveal-sentinel" aria-hidden="true" />}
         </main>
         </div>
-        {section === 'reports' && staff || section === 'awards' || (section === 'merchant' && staff) ? null : <Footer />}
+        {section === 'reports' && staff || section === 'awarded' && companyAwards || section === 'awards' || (section === 'merchant' && staff) ? null : <Footer />}
       </div>
 
       {selected ? (
@@ -608,6 +622,8 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
             onBack={requestClose}
             onClassified={applyClassification}
             staff={staff}
+            companyAwards={companyAwards}
+            onAwardChanged={() => setAwardRevision((value) => value + 1)}
           />
         </ExpandingPanel>
       ) : null}

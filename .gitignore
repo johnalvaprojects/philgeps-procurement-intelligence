@@ -4,6 +4,7 @@ data/documents/**
 data/output/**
 data/logs/**
 data/auth/
+data/company-awards/
 data/notice-reads/
 data/awards/
 data/merchant-awards/

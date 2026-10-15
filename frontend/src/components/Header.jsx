@@ -19,6 +19,7 @@ export default function Header({
   onShowSoftware,
   onShowAwards,
   onShowMerchant,
+  onShowAwarded,
   onShowReports,
   onSignOut,
 }) {
@@ -26,6 +27,7 @@ export default function Header({
   const softwareRef = useRef(null)
   const awardsRef = useRef(null)
   const merchantRef = useRef(null)
+  const awardedRef = useRef(null)
   const reportsRef = useRef(null)
   const themeRef = useRef(null)
   const headerRef = useRef(null)
@@ -105,6 +107,18 @@ export default function Header({
             onFocus={() => merchantRef.current?.play()}
           >
             <LineHoverText ref={merchantRef} text="Merchant" />
+          </button>
+        ) : null}
+        {onShowAwarded ? (
+          <button
+            type="button"
+            className="nav-link mono"
+            onClick={onShowAwarded}
+            onMouseEnter={() => awardedRef.current?.play()}
+            onMouseLeave={() => awardedRef.current?.restore()}
+            onBlur={() => awardedRef.current?.restore()}
+          >
+            <LineHoverText ref={awardedRef} text="Awarded to Us" />
           </button>
         ) : null}
         {onShowReports ? (

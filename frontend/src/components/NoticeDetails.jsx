@@ -6,6 +6,7 @@ import ClassificationControls from './ClassificationControls.jsx'
 import NoticeDocuments from './NoticeDocuments.jsx'
 import ProcurementRequirements from './ProcurementRequirements.jsx'
 import StatusBadge from './StatusBadge.jsx'
+import { CompanyAwardMark } from './CompanyAwards.jsx'
 import AwardPanel from '../../../archive/merchant-awards/frontend/AwardPanel.jsx'
 import { featureEnabled } from '../../../config/features.js'
 import WorkStatusControls from './WorkStatusControls.jsx'
@@ -33,7 +34,7 @@ function secondaryFacts(packet) {
   return fields.filter(([, value]) => value)
 }
 
-export default function NoticeDetails({ noticeId, onBack, onClassified, staff = true }) {
+export default function NoticeDetails({ noticeId, onBack, onClassified, staff = true, companyAwards = false, onAwardChanged }) {
   const [packet, setPacket] = useState(null)
   const [state, setState] = useState('loading')
   const [saving, setSaving] = useState(false)
@@ -246,6 +247,7 @@ export default function NoticeDetails({ noticeId, onBack, onClassified, staff = 
               />
             </section>
           ) : null}
+          {companyAwards ? <CompanyAwardMark noticeId={noticeId} onChanged={onAwardChanged} /> : null}
           {featureEnabled('awards') ? <AwardPanel noticeId={noticeId} staff={staff} /> : null}
         </>
       ) : null}

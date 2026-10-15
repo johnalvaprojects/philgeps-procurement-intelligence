@@ -3,6 +3,7 @@ import express from "express";
 import { projectRoot, useProjectRoot } from "../project-root.js";
 import authRoutes from "./routes/auth-routes.js";
 import noticeRoutes from "./routes/notice-routes.js";
+import companyAwardRoutes from "./routes/company-award-routes.js";
 import scanRoutes from "./routes/scan-routes.js";
 import { rejectDataPaths } from "./reject-data.js";
 
@@ -24,6 +25,7 @@ app.get("/api/status", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/notices", noticeRoutes);
+app.use("/api/company-awards", companyAwardRoutes);
 app.use("/api/scan", scanRoutes);
 
 app.use((err, req, res, next) => {
