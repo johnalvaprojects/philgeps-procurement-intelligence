@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import express from 'express';
 import noticeRoutes from '../src/server/routes/notice-routes.js';
 import { rejectDataPaths } from '../src/server/reject-data.js';
+import { projectRoot } from '../src/project-root.js';
+import { isUnread, loadNoticeReads, repairNoticeReadBaseline } from '../src/notice-reads/store.js';
 import { loginStaff, provisionStaff, staffHeaders, useAuthRoutes } from './http-auth.js';
+
+const execFileAsync = promisify(execFile);
 
 function packet(reference, { legacy = false, title = 'Blood bank equipment' } = {}) {
   return {
@@ -179,5 +185,96 @@ test('marking a notice read requires a signed-in user and does not rewrite the n
     assert.equal(byReference(notices, '97334').workStatus, 'new');
   } finally {
     await closeApp(context);
+  }
+});
+
+test('a missing read directory or another notice directory cannot touch the project baseline', async () => {
+  const live = path.join(projectRoot, 'data', 'notice-reads', 'reads.json');
+  const before = createHash('sha256').update(await readFile(live)).digest('hex');
+  const directory = await mkdtemp(path.join(tmpdir(), 'philgeps-reads-guard-'));
+  const outputDir = path.join(directory, 'output');
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(path.join(outputDir, '50850.json'), '{}\n');
+  try {
+    await assert.rejects(() => loadNoticeReads(undefined, outputDir, ['50850']));
+    await assert.rejects(() => loadNoticeReads(path.join(projectRoot, 'data', 'notice-reads'), outputDir, ['50850']));
+    assert.equal(createHash('sha256').update(await readFile(live)).digest('hex'), before);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a partial id list cannot record a notice-read baseline', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'philgeps-reads-partial-'));
+  const outputDir = path.join(directory, 'output');
+  const readsDir = path.join(directory, 'notice-reads');
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(path.join(outputDir, '11111.json'), '{}\n');
+  await writeFile(path.join(outputDir, '22222.json'), '{}\n');
+  try {
+    await assert.rejects(() => loadNoticeReads(readsDir, outputDir, ['11111']));
+    await assert.rejects(() => readFile(path.join(readsDir, 'reads.json')));
+    const state = await loadNoticeReads(readsDir, outputDir);
+    assert.equal(state.baselineRecorded, true);
+    assert.equal(typeof state.read['11111'], 'string');
+    assert.equal(typeof state.read['22222'], 'string');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+async function backdateNotice(file) {
+  const when = '2026-10-12T12:36:32Z';
+  await execFileAsync('powershell.exe', [
+    '-NoProfile',
+    '-Command',
+    `$item = Get-Item -LiteralPath '${file.replaceAll("'", "''")}'; $item.CreationTime = [datetime]::Parse('${when}'); $item.LastWriteTime = [datetime]::Parse('${when}')`,
+  ]);
+}
+
+test('repair keeps a genuine read, restores only notices created before the cutoff, and drops unknown ids', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'philgeps-reads-repair-'));
+  const outputDir = path.join(directory, 'output');
+  const readsDir = path.join(directory, 'notice-reads');
+  await mkdir(outputDir, { recursive: true });
+  const existingPath = path.join(outputDir, '97334.json');
+  const untouchedPath = path.join(outputDir, '11111.json');
+  const discoveredPath = path.join(outputDir, '99901.json');
+  const body = '{"classification":"software","workStatus":"new"}\n';
+  await writeFile(existingPath, body);
+  await writeFile(untouchedPath, body);
+  await backdateNotice(existingPath);
+  await backdateNotice(untouchedPath);
+  await writeFile(discoveredPath, body);
+  const beforeExisting = await readFile(existingPath);
+  const beforeDiscovered = await readFile(discoveredPath);
+  await mkdir(readsDir, { recursive: true });
+  await writeFile(path.join(readsDir, 'reads.json'), `${JSON.stringify({
+    baselineRecorded: true,
+    read: {
+      50850: '2026-10-15T10:28:44.620Z',
+      50851: '2026-10-15T10:28:44.620Z',
+      97334: '2026-10-15T11:11:19.837Z',
+    },
+  }, null, 2)}\n`);
+  try {
+    const cutoff = '2026-10-15T10:28:44.620Z';
+    const repaired = await repairNoticeReadBaseline(readsDir, outputDir, { cutoff });
+    assert.equal(repaired.baselineRecorded, true);
+    assert.equal(repaired.read['97334'], '2026-10-15T11:11:19.837Z');
+    assert.equal(repaired.read['11111'], cutoff);
+    assert.equal(Object.hasOwn(repaired.read, '99901'), false);
+    assert.equal(Object.hasOwn(repaired.read, '50850'), false);
+    assert.equal(Object.hasOwn(repaired.read, '50851'), false);
+    assert.equal(isUnread(repaired, '99901'), true);
+    assert.equal(isUnread(repaired, '97334'), false);
+    assert.equal(isUnread(repaired, '11111'), false);
+
+    const again = await loadNoticeReads(readsDir, outputDir);
+    assert.equal(Object.hasOwn(again.read, '99901'), false);
+    assert.equal(createHash('sha256').update(await readFile(existingPath)).digest('hex'), createHash('sha256').update(beforeExisting).digest('hex'));
+    assert.equal(createHash('sha256').update(await readFile(discoveredPath)).digest('hex'), createHash('sha256').update(beforeDiscovered).digest('hex'));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

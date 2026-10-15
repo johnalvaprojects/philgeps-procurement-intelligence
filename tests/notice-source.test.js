@@ -95,6 +95,7 @@ test('list and detail read both filename shapes without rewriting files', async 
   const account = await provisionStaff(app);
   app.set('outputDir', directory);
   app.set('documentsRoot', path.join(directory, 'documents'));
+  app.set('noticeReadsDir', path.join(directory, 'notice-reads'));
   useAuthRoutes(app);
   app.use('/api/notices', noticeRoutes);
   const server = await new Promise((resolve) => {

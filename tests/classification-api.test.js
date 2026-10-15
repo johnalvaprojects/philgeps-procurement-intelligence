@@ -63,6 +63,7 @@ async function startApp(outputDir, documentsRoot) {
   const account = await provisionStaff(app);
   app.set('outputDir', outputDir);
   app.set('documentsRoot', documentsRoot);
+  app.set('noticeReadsDir', path.join(outputDir, '..', 'notice-reads'));
   useAuthRoutes(app);
   app.use('/api/notices', noticeRoutes);
   const server = await new Promise((resolve) => {

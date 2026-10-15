@@ -59,6 +59,7 @@ async function appWithNotice({ guestFullAccess = false } = {}) {
   const account = await provisionStaff(app);
   app.set('outputDir', outputDir);
   app.set('documentsRoot', path.join(directory, 'documents'));
+  app.set('noticeReadsDir', path.join(directory, 'notice-reads'));
   app.set('loginMaxAttempts', 2);
   app.set('loginWindowMs', 60_000);
   app.set('scanReportsDir', path.join(directory, 'reports'));
@@ -307,6 +308,7 @@ test('an expired session is rejected', async () => {
   app.set('sessionTtlMs', 30);
   const account = await provisionStaff(app);
   app.set('outputDir', directory);
+  app.set('noticeReadsDir', path.join(directory, 'notice-reads'));
   useAuthRoutes(app);
   app.use('/api/notices', noticeRoutes);
   const server = await listen(app);

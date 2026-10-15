@@ -1,5 +1,6 @@
+import path from "node:path";
 import express from "express";
-import { useProjectRoot } from "../project-root.js";
+import { projectRoot, useProjectRoot } from "../project-root.js";
 import authRoutes from "./routes/auth-routes.js";
 import noticeRoutes from "./routes/notice-routes.js";
 import scanRoutes from "./routes/scan-routes.js";
@@ -12,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(rejectDataPaths);
 app.use(express.json());
+app.set("noticeReadsDir", path.join(projectRoot, "data", "notice-reads"));
 
 app.get("/api/status", (req, res) => {
   res.json({
