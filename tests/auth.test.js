@@ -12,7 +12,7 @@ import noticeRoutes from '../src/server/routes/notice-routes.js';
 import scanRoutes from '../src/server/routes/scan-routes.js';
 import { rejectDataPaths } from '../src/server/reject-data.js';
 import { loginStaff, provisionStaff, staffHeaders, useAuthRoutes } from './http-auth.js';
-import { guestFullAccessEnabled } from '../src/auth/access.js';
+import { guestFullAccessEnabled, requestHasGuestFullAccess } from '../src/auth/access.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -203,12 +203,30 @@ test('guest and staff authorization, sessions, and CSRF', async () => {
   }
 });
 
-test('local guest access matches staff and production keeps guests restricted', () => {
-  assert.equal(guestFullAccessEnabled({ NODE_ENV: 'production' }), false);
-  assert.equal(guestFullAccessEnabled({ NODE_ENV: 'development' }), true);
-  assert.equal(guestFullAccessEnabled({}), true);
-  assert.equal(guestFullAccessEnabled({ NODE_ENV: 'production', GUEST_FULL_ACCESS: 'true' }), true);
-  assert.equal(guestFullAccessEnabled({ NODE_ENV: 'development', GUEST_FULL_ACCESS: 'false' }), false);
+test('elevated guest access requires an explicit flag and a permitted non-production environment', () => {
+  const cases = [
+    [{ NODE_ENV: 'development' }, false],
+    [{ NODE_ENV: 'development', GUEST_FULL_ACCESS: 'false' }, false],
+    [{ NODE_ENV: 'development', GUEST_FULL_ACCESS: 'true' }, true],
+    [{ NODE_ENV: 'demo', GUEST_FULL_ACCESS: 'true' }, true],
+    [{ GUEST_FULL_ACCESS: 'true' }, false],
+    [{ NODE_ENV: 'production' }, false],
+    [{ NODE_ENV: 'production', GUEST_FULL_ACCESS: 'false' }, false],
+    [{ NODE_ENV: 'production', GUEST_FULL_ACCESS: 'true' }, false],
+    [{ NODE_ENV: 'test', GUEST_FULL_ACCESS: 'true' }, false],
+    [{ NODE_ENV: 'staging', GUEST_FULL_ACCESS: 'true' }, false],
+    [{ NODE_ENV: 'development', GUEST_FULL_ACCESS: 'TRUE' }, false],
+    [{ NODE_ENV: 'development', GUEST_FULL_ACCESS: '1' }, false],
+  ];
+  for (const [env, expected] of cases) {
+    assert.equal(guestFullAccessEnabled(env), expected, JSON.stringify(env));
+  }
+
+  const forced = { app: { get: () => true } };
+  assert.equal(requestHasGuestFullAccess(forced, { NODE_ENV: 'production', GUEST_FULL_ACCESS: 'true' }), false);
+  assert.equal(requestHasGuestFullAccess(forced, { NODE_ENV: 'development' }), true);
+  assert.equal(requestHasGuestFullAccess({ app: { get: () => undefined } }, { NODE_ENV: 'development', GUEST_FULL_ACCESS: 'true' }), true);
+  assert.equal(requestHasGuestFullAccess({ app: { get: () => undefined } }, { GUEST_FULL_ACCESS: 'true' }), false);
 });
 
 test('a local guest can use the same notice, document, classification, work status, and scan routes', async () => {

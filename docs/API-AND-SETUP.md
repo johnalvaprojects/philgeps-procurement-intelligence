@@ -77,8 +77,8 @@ Names and purposes only. Do not commit `.env`.
 | `OCR_TIMEOUT_MS` | Whole OCR run budget. Default `15000` |
 | `OCR_PAGE_TIMEOUT_MS` | Optional per-page OCR budget. Not listed in `.env.example`. If unset or invalid, the code uses `8000` or `OCR_TIMEOUT_MS`, whichever is smaller. A valid integer is used as entered |
 | `USER_AGENT` | `User-Agent` header on PhilGEPS requests. Default is a Chrome-like string in `src/philgeps/client.js` |
-| `NODE_ENV` | `production` turns off guest full access unless `GUEST_FULL_ACCESS=true`. Local `npm run dev` and Docker leave this unset |
-| `GUEST_FULL_ACCESS` | `true` or `false` forces guest access. Otherwise guests match staff only when `NODE_ENV` is not `production` |
+| `NODE_ENV` | Elevated guest access is possible only when this is exactly `development` or `demo`. `production`, an unset value, and any other value keep guests restricted |
+| `GUEST_FULL_ACCESS` | Must be exactly `true`, together with a permitted `NODE_ENV`, before a guest receives staff workspace access. Unset, `false`, and any other value stay restricted. This cannot enable elevated guest access in production or when `NODE_ENV` is unset. `npm run dev`, `npm run visual`, and Docker Compose do not set it |
 | `COOKIE_SECURE` | `true` or `false` forces the session cookie Secure flag. Leave unset for local HTTP |
 | `SESSION_TTL_MS` | Session length. Default 12 hours |
 | `LOGIN_MAX_ATTEMPTS` / `LOGIN_WINDOW_MS` | Staff sign-in limit. Default 5 attempts per 15 minutes |
@@ -101,7 +101,7 @@ npm run dev
 
 Open the URL Vite prints, usually `http://localhost:5173`. API health check: `http://localhost:3000/api/status`.
 
-Welcome offers guest entry and staff sign-in. Locally, a guest can use the same review tools as staff. Set `NODE_ENV=production` to keep the older guest limits. Staff accounts live in `data/auth/` and are not committed.
+Welcome offers guest entry and staff sign-in. A guest is restricted unless `GUEST_FULL_ACCESS=true` and `NODE_ENV` is `development` or `demo`. Do not expose that development server to the public internet: an elevated guest can run scans and change classifications. Staff accounts live in `data/auth/` and are not committed.
 
 ## Docker Compose
 
