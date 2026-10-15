@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { padCount } from '../format.js'
 import DateField from './DateField.jsx'
 
 const HOLD_MS = 800
+const SWAP_MS = 300
+const SWAP_EASE = 'cubic-bezier(0.22, 0.8, 0.2, 1)'
 
 export default function Hero({
   total,
@@ -24,9 +26,14 @@ export default function Hero({
 }) {
   const [phase, setPhase] = useState('idle')
   const [focused, setFocused] = useState(false)
+  const [revealedPortal, setRevealedPortal] = useState(null)
+  const [swapToken, setSwapToken] = useState(0)
   const holdTimer = useRef(null)
   const onScanRef = useRef(onScan)
   const scanningRef = useRef(scanning)
+  const swapRef = useRef(null)
+  const swapGeneration = useRef(0)
+  const swapPending = useRef(null)
 
   let figure = padCount(total)
   if (state === 'loading') figure = '···'
@@ -115,6 +122,78 @@ export default function Hero({
   const accessibleLabel = busy ? 'Scanning...' : (holding || focused) ? 'Hold to scan' : 'Scan PhilGEPS'
   const rangeActive = !legacyPortal && Boolean(scanFrom || scanTo)
 
+  function releaseSwap(node) {
+    node.style.height = ''
+    node.style.overflow = ''
+    node.style.transition = ''
+  }
+
+  function choosePortal(next) {
+    if (busy || next === scanPortal) return
+    const node = swapRef.current
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const generation = swapGeneration.current + 1
+    swapGeneration.current = generation
+
+    if (node && !reduceMotion) {
+      const from = node.getBoundingClientRect().height
+      node.style.transition = 'none'
+      node.style.overflow = 'hidden'
+      node.style.height = `${from}px`
+      swapPending.current = { generation, from }
+    } else {
+      swapPending.current = null
+    }
+
+    setSwapToken((value) => value + 1)
+    setRevealedPortal(next)
+    onScanPortal?.(next)
+  }
+
+  useLayoutEffect(() => {
+    const pending = swapPending.current
+    const node = swapRef.current
+    if (!pending || !node || pending.generation !== swapGeneration.current) return undefined
+
+    let { from, to } = pending
+    if (!pending.started) {
+      node.style.height = 'auto'
+      to = node.getBoundingClientRect().height
+      node.style.height = `${from}px`
+      if (Math.abs(to - from) < 0.5) {
+        swapPending.current = null
+        releaseSwap(node)
+        return undefined
+      }
+      swapPending.current = { generation: pending.generation, from, to, started: true }
+    } else {
+      node.style.transition = 'none'
+      node.style.height = `${from}px`
+    }
+
+    void node.offsetHeight
+    node.style.transition = `height ${SWAP_MS}ms ${SWAP_EASE}`
+    node.style.height = `${to}px`
+
+    const generation = pending.generation
+    let timer = 0
+    function finish(event) {
+      if (event?.type === 'transitionend' && (event.target !== node || event.propertyName !== 'height')) return
+      if (swapGeneration.current !== generation || !swapRef.current) return
+      swapPending.current = null
+      releaseSwap(swapRef.current)
+      node.removeEventListener('transitionend', finish)
+      window.clearTimeout(timer)
+    }
+    node.addEventListener('transitionend', finish)
+    timer = window.setTimeout(finish, SWAP_MS + 80)
+
+    return () => {
+      window.clearTimeout(timer)
+      node.removeEventListener('transitionend', finish)
+    }
+  }, [swapToken])
+
   return (
     <section className="hero" aria-labelledby="hero-title">
       <div className="hero-figure display" aria-hidden={state !== 'ready'}>
@@ -134,7 +213,7 @@ export default function Hero({
               className={scanPortal === 'current' ? 'filter mono is-active' : 'filter mono'}
               aria-pressed={scanPortal === 'current'}
               disabled={busy}
-              onClick={() => onScanPortal?.('current')}
+              onClick={() => choosePortal('current')}
             >
               Current PhilGEPS
             </button>
@@ -143,13 +222,13 @@ export default function Hero({
               className={scanPortal === 'legacy' ? 'filter mono is-active' : 'filter mono'}
               aria-pressed={scanPortal === 'legacy'}
               disabled={busy}
-              onClick={() => onScanPortal?.('legacy')}
+              onClick={() => choosePortal('legacy')}
             >
               Old PhilGEPS
             </button>
           </div>
           <div
-            className={rangeActive ? 'scan-panel is-custom' : 'scan-panel'}
+            className={['scan-panel', rangeActive ? 'is-custom' : '', legacyPortal ? 'is-legacy' : '', !legacyPortal && revealedPortal === 'current' ? 'is-current' : ''].filter(Boolean).join(' ')}
             role="group"
             aria-label={legacyPortal ? 'Old PhilGEPS page limit' : 'Scan publication date range'}
           >
@@ -176,52 +255,54 @@ export default function Hero({
               </div>
             </div>
 
-            {legacyPortal ? (
-              <div className="scan-page-limit" role="group" aria-label="Page limit">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={pageLimit === value ? 'filter mono is-active' : 'filter mono'}
-                    aria-pressed={pageLimit === value}
-                    disabled={busy}
-                    onClick={() => onPageLimit?.(value)}
-                  >
-                    {value}
-                  </button>
-                ))}
+            <div className="scan-panel-swap" ref={swapRef}>
+              {legacyPortal ? (
+                <div className="scan-page-limit" role="group" aria-label="Page limit">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={pageLimit === value ? 'filter mono is-active' : 'filter mono'}
+                      aria-pressed={pageLimit === value}
+                      disabled={busy}
+                      onClick={() => onPageLimit?.(value)}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+              <div className="scan-panel-dates">
+                <div className="scan-range-field">
+                  <span className="mono scan-range-key">From</span>
+                  <DateField
+                    label="Scan from"
+                    placeholder="DD.MM.YYYY"
+                    value={scanFrom}
+                    onChange={onScanFromChange}
+                  />
+                </div>
+                <span className="scan-range-sep" aria-hidden="true">→</span>
+                <div className="scan-range-field">
+                  <span className="mono scan-range-key">To</span>
+                  <DateField
+                    label="Scan to"
+                    placeholder="DD.MM.YYYY"
+                    value={scanTo}
+                    onChange={onScanToChange}
+                  />
+                </div>
               </div>
-            ) : (
-            <div className="scan-panel-dates">
-              <div className="scan-range-field">
-                <span className="mono scan-range-key">From</span>
-                <DateField
-                  label="Scan from"
-                  placeholder="DD.MM.YYYY"
-                  value={scanFrom}
-                  onChange={onScanFromChange}
-                />
-              </div>
-              <span className="scan-range-sep" aria-hidden="true">→</span>
-              <div className="scan-range-field">
-                <span className="mono scan-range-key">To</span>
-                <DateField
-                  label="Scan to"
-                  placeholder="DD.MM.YYYY"
-                  value={scanTo}
-                  onChange={onScanToChange}
-                />
-              </div>
-            </div>
-            )}
+              )}
 
-            <p className="mono scan-panel-note">
-              {legacyPortal
-                ? `Open notices / ${pageLimit} ${pageLimit === 1 ? 'page' : 'pages'}`
-                : rangeActive
-                  ? 'Custom / PhilGEPS publish window for the next scan'
-                  : 'Default / today + previous 3 publish days'}
-            </p>
+              <p className="mono scan-panel-note">
+                {legacyPortal
+                  ? `Open notices / ${pageLimit} ${pageLimit === 1 ? 'page' : 'pages'}`
+                  : rangeActive
+                    ? 'Custom / PhilGEPS publish window for the next scan'
+                    : 'Default / today + previous 3 publish days'}
+              </p>
+            </div>
 
             <button
               type="button"

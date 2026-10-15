@@ -275,6 +275,72 @@
   border-bottom: 1px solid var(--foreground);
 }
 
+.scan-panel-swap {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scan-panel.is-legacy .scan-page-limit,
+  .scan-panel.is-legacy .scan-panel-note {
+    animation: scan-legacy-reveal 300ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
+  }
+
+  .scan-panel.is-legacy .scan-panel-note {
+    animation-delay: 40ms;
+  }
+
+  .scan-panel.is-legacy .scan-page-limit .filter {
+    animation: scan-legacy-chip 240ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
+  }
+
+  .scan-panel.is-legacy .scan-page-limit .filter:nth-child(1) { animation-delay: 20ms; }
+  .scan-panel.is-legacy .scan-page-limit .filter:nth-child(2) { animation-delay: 45ms; }
+  .scan-panel.is-legacy .scan-page-limit .filter:nth-child(3) { animation-delay: 70ms; }
+  .scan-panel.is-legacy .scan-page-limit .filter:nth-child(4) { animation-delay: 95ms; }
+  .scan-panel.is-legacy .scan-page-limit .filter:nth-child(5) { animation-delay: 120ms; }
+
+  .scan-panel.is-current .scan-panel-dates,
+  .scan-panel.is-current .scan-panel-note {
+    animation: scan-legacy-reveal 300ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
+  }
+
+  .scan-panel.is-current .scan-panel-note {
+    animation-delay: 40ms;
+  }
+
+  .scan-panel.is-current .scan-panel-dates > * {
+    animation: scan-legacy-chip 240ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
+  }
+
+  .scan-panel.is-current .scan-panel-dates > :nth-child(1) { animation-delay: 20ms; }
+  .scan-panel.is-current .scan-panel-dates > :nth-child(2) { animation-delay: 55ms; }
+  .scan-panel.is-current .scan-panel-dates > :nth-child(3) { animation-delay: 90ms; }
+}
+
+@keyframes scan-legacy-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.45rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scan-legacy-chip {
+  from {
+    opacity: 0;
+    transform: translateY(0.28rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Swiss command panel — structure from horizontal rules, not a card box */
 .scan-panel {
   display: flex;
@@ -2710,6 +2776,17 @@
     width: 100%;
     transform: none !important;
     transition: none !important;
+  }
+
+  .scan-panel.is-legacy .scan-page-limit,
+  .scan-panel.is-legacy .scan-page-limit .filter,
+  .scan-panel.is-legacy .scan-panel-note,
+  .scan-panel.is-current .scan-panel-dates,
+  .scan-panel.is-current .scan-panel-dates > *,
+  .scan-panel.is-current .scan-panel-note {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 
   .scan-action:hover .scan-copy-hold,
