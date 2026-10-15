@@ -24,6 +24,7 @@ import {
 } from './notices.js'
 import { formatScanRangeLabel, validateScanRange } from './scan-range.js'
 import { parseLegacyPageLimit } from './scan-portal.js'
+import { playChannel } from './channel-transition.js'
 import { prefersReducedMotion } from './useReducedMotion.js'
 import { playPeel } from './peel-transition.js'
 import { playSlideBack } from './slide-over-transition.js'
@@ -453,7 +454,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
       // The local session still ends if the server is unreachable.
     }
     setCsrfToken(null)
-    onSignedOut?.()
+    playChannel(() => onSignedOut?.())
   }
 
   function scrollToId(id, behavior) {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiFetch, setCsrfToken } from './api.js'
+import { playChannel } from './channel-transition.js'
 import './welcome.css'
 
 export default function Welcome({ onSession }) {
@@ -10,7 +11,9 @@ export default function Welcome({ onSession }) {
 
   function accept(body) {
     setCsrfToken(body.csrfToken)
-    onSession({ role: body.role, username: body.username || null, fullAccess: body.fullAccess === true })
+    playChannel(() => {
+      onSession({ role: body.role, username: body.username || null, fullAccess: body.fullAccess === true })
+    })
   }
 
   async function continueAsGuest() {

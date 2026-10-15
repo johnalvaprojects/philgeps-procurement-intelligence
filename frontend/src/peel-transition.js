@@ -1,4 +1,5 @@
 import { flushSync } from 'react-dom'
+import { cancelChannel } from './channel-transition.js'
 import { cancelSlide } from './slide-over-transition.js'
 import { prefersReducedMotion } from './useReducedMotion.js'
 
@@ -164,6 +165,7 @@ export function playPeel(direction, update, after) {
   if (typeof update !== 'function') return
   if (prefersReducedMotion()) {
     cancelSlide()
+    cancelChannel()
     clearStage()
     update()
     after?.()
@@ -171,6 +173,7 @@ export function playPeel(direction, update, after) {
   }
 
   cancelSlide()
+  cancelChannel()
   clearStage()
   const visual = takeVisual()
   if (!visual) {
