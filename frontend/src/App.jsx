@@ -24,6 +24,8 @@ import {
 import { formatScanRangeLabel, validateScanRange } from './scan-range.js'
 import { parseLegacyPageLimit } from './scan-portal.js'
 import { prefersReducedMotion } from './useReducedMotion.js'
+import { playPeel } from './peel-transition.js'
+import { playSlideBack } from './slide-over-transition.js'
 import { apiFetch, setCsrfToken } from './api.js'
 import './App.css'
 
@@ -289,12 +291,26 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
   }
 
   function openNotice(id, element) {
-    originElement.current = element || null
-    setSelected({ id, rect: plainRect(element?.getBoundingClientRect()) })
-    setPanelOpen(true)
+    playPeel('forward', () => {
+      originElement.current = element || null
+      setSelected({
+        id,
+        rect: plainRect(element?.getBoundingClientRect()),
+        instant: !prefersReducedMotion(),
+      })
+      setPanelOpen(true)
+    })
   }
 
-  const requestClose = useCallback(() => setPanelOpen(false), [])
+  const requestClose = useCallback(() => {
+    playSlideBack(() => {
+      setPanelOpen(false)
+      setSelected(null)
+      const element = originElement.current
+      originElement.current = null
+      if (element && typeof element.focus === 'function') element.focus({ preventScroll: true })
+    })
+  }, [])
 
   const handleClosed = useCallback(() => {
     setSelected(null)
@@ -308,9 +324,14 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
     setPage(1)
   }
 
-  function updateClassification(value) {
+  function setClassificationFilter(value) {
     if (value !== classification) setPage(1)
     setClassification(value)
+  }
+
+  function updateClassification(value) {
+    if (value === classification) return
+    playPeel('forward', () => setClassificationFilter(value))
   }
 
   function updateWorkStatus(value) {
@@ -342,11 +363,25 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
     setPage(1)
   }
 
-  function showOpportunities(filter, { scrollTo = 'list' } = {}) {
-    setSection('notices')
-    if (filter) updateClassification(filter)
-    if (scrollTo === 'featured') scrollToFeatured()
-    else scrollToOpportunities()
+  function showOpportunities(filter, { scrollTo = 'list', peel = true } = {}) {
+    const leavingDesk = section === 'reports'
+    const classChange = Boolean(filter) && filter !== classification
+    const sectionChange = section !== 'notices'
+    const target = scrollTo === 'featured' ? 'featured' : 'opportunities'
+    const go = () => {
+      setSection('notices')
+      if (filter) setClassificationFilter(filter)
+    }
+    if (sectionChange || classChange) {
+      if (leavingDesk) playSlideBack(go, () => scrollToId(target, 'auto'))
+      else if (peel) playPeel('forward', go, () => scrollToId(target, 'auto'))
+      else {
+        go()
+        scrollToId(target)
+      }
+      return
+    }
+    scrollToId(target)
   }
 
   const dateScopedNotices = useMemo(
@@ -389,18 +424,15 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
     onSignedOut?.()
   }
 
-  function scrollToOpportunities() {
-    document.getElementById('opportunities')?.scrollIntoView({
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+  function scrollToId(id, behavior) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: behavior || (prefersReducedMotion() ? 'auto' : 'smooth'),
       block: 'start',
     })
   }
 
-  function scrollToFeatured() {
-    document.getElementById('featured')?.scrollIntoView({
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'start',
-    })
+  function scrollToOpportunities() {
+    scrollToId('opportunities')
   }
 
   function goToPage(next) {
@@ -426,12 +458,17 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
           onShowSoftware={staff ? () => showOpportunities('software') : null}
           onShowAwards={awardsEnabled ? () => setSection('awards') : null}
           onShowMerchant={merchantEnabled && staff ? () => setSection('merchant') : null}
-          onShowReports={staff ? () => setSection('reports') : null}
+          onShowReports={staff ? () => {
+            if (section === 'reports') return
+            playPeel('forward', () => setSection('reports'), () => {
+              window.scrollTo({ top: 0, behavior: 'auto' })
+            })
+          } : null}
           onSignOut={signOut}
         />
         <main>
           {section === 'reports' && staff ? (
-            <ScanReports onClose={() => setSection('notices')} />
+            <ScanReports onClose={() => playSlideBack(() => setSection('notices'))} />
           ) : awardsEnabled && section === 'awards' ? (
             <Awards staff={staff} />
           ) : merchantEnabled && section === 'merchant' && staff ? (
@@ -462,7 +499,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
             <Statistics
               counts={counts}
               active={classification}
-              onSelect={(filter) => showOpportunities(filter, { scrollTo: 'featured' })}
+              onSelect={(filter) => showOpportunities(filter, { scrollTo: 'featured', peel: false })}
             />
           ) : null}
           {staff ? <FeaturedOpportunities
@@ -531,6 +568,7 @@ export default function App({ role = 'staff', fullAccess = false, onSignedOut })
         <ExpandingPanel
           key={selected.id}
           originRect={selected.rect}
+          instant={selected.instant}
           open={panelOpen}
           onRequestClose={requestClose}
           onClosed={handleClosed}

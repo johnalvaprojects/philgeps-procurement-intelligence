@@ -20,11 +20,12 @@ function invertTransform(rect) {
 // The panel is always inset: 0. Only transform and opacity move, so the
 // expansion stays on the compositor. Phases: invert -> expanding -> settled,
 // then closing -> onClosed().
-export default function ExpandingPanel({ originRect, open, onRequestClose, onClosed, label, children }) {
+export default function ExpandingPanel({ originRect, open, instant = false, onRequestClose, onClosed, label, children }) {
   const reduced = useReducedMotion()
+  const settleNow = reduced || instant
   const panelRef = useRef(null)
   const invert = useRef(invertTransform(originRect))
-  const [phase, setPhase] = useState(reduced ? 'settled' : 'invert')
+  const [phase, setPhase] = useState(settleNow ? 'settled' : 'invert')
 
   useEffect(() => {
     document.documentElement.classList.add('panel-open')
@@ -36,7 +37,7 @@ export default function ExpandingPanel({ originRect, open, onRequestClose, onClo
   }, [])
 
   useLayoutEffect(() => {
-    if (!open || reduced) return undefined
+    if (!open || settleNow) return undefined
     panelRef.current?.getBoundingClientRect()
     let inner = 0
     const outer = requestAnimationFrame(() => {
@@ -48,11 +49,11 @@ export default function ExpandingPanel({ originRect, open, onRequestClose, onClo
       cancelAnimationFrame(outer)
       cancelAnimationFrame(inner)
     }
-  }, [open, reduced])
+  }, [open, settleNow])
 
   useEffect(() => {
     if (!open) return undefined
-    if (reduced) {
+    if (settleNow) {
       setPhase('settled')
       return undefined
     }
@@ -60,7 +61,7 @@ export default function ExpandingPanel({ originRect, open, onRequestClose, onClo
       setPhase((current) => (current === 'closing' ? current : 'settled'))
     }, DURATION + 20)
     return () => clearTimeout(timer)
-  }, [open, reduced])
+  }, [open, settleNow])
 
   useEffect(() => {
     if (open) return undefined

@@ -29,6 +29,83 @@
   pointer-events: none;
 }
 
+html.is-peeling,
+html.is-sliding {
+  scroll-behavior: auto;
+}
+
+.peel-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.peel-sheet,
+.peel-flap,
+.peel-film {
+  position: absolute;
+  inset: 0;
+}
+
+.peel-sheet {
+  overflow: hidden;
+  transform: translateZ(0);
+  background: var(--background);
+}
+
+.peel-film {
+  background: #111111;
+}
+
+.peel-visual {
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
+.peel-visual,
+.peel-visual *,
+.slide-visual,
+.slide-visual * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.slide-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  background: #111111;
+  pointer-events: auto;
+}
+
+.slide-sheet {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--background);
+  transform-origin: center center;
+}
+
+.slide-sheet.is-old {
+  z-index: 2;
+}
+
+.slide-dim {
+  position: absolute;
+  inset: 0;
+  background: #111111;
+}
+
+.slide-visual {
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
 .site.is-reports,
 .site.is-awards,
 .site.is-merchant {
